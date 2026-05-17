@@ -1,8 +1,25 @@
-name: Deploy OpeningOS to GitHub Pages
+name: Deploy Frontend to GitHub Pages
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+    paths:
+      - "index.html"
+      - "404.html"
+      - "manifest.json"
+      - "sw.js"
+      - "styles.css"
+      - "js/**"
+      - "src/**"
+      - "icons/**"
+      - "vendor/**"
+      - "public/**"
+      - "tools/**"
+      - "tests/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -11,30 +28,48 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: openingos-pages
+  cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
+    name: Build frontend
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Validate static app
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Validate static frontend
         run: npm run validate:deploy
-      - name: Configure Pages
+
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-      - name: Upload static site artifact
+
+      - name: Upload frontend artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+  deploy:
+    name: Deploy frontend
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
