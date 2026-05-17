@@ -50,7 +50,7 @@ for (const asset of ['./vendor/chess.min.js', './js/idb_store.js', './js/fsrs.js
 
 
 assert(fs.existsSync(path.join(root, '.github', 'workflows', 'ci.yml')), 'CI workflow is missing');
-const pagesWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'pages.yml'), 'utf8');
+const pagesWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'deploy-pages.yml'), 'utf8');
 assert(pagesWorkflow.includes('push:') && pagesWorkflow.includes('deploy-pages'), 'GitHub Pages workflow should deploy automatically on push');
 assert(fs.existsSync(path.join(root, '.nojekyll')), '.nojekyll is required for predictable GitHub Pages static hosting');
 assert(fs.existsSync(path.join(root, 'DEPLOYMENT_GITHUB_STUDENT.md')), 'GitHub student deployment guide is missing');
