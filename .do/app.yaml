@@ -1,8 +1,8 @@
-name: openingos-api
+name: monkfish-app
 region: blr
 
 services:
-  - name: api
+  - name: openingos
     environment_slug: node-js
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-1gb
