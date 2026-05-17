@@ -1,0 +1,62 @@
+name: Deploy Backend to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "server/**"
+      - ".do/app.yaml"
+      - ".github/workflows/deploy-backend-do.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openingos-backend-production
+  cancel-in-progress: true
+
+jobs:
+  validate-backend:
+    name: Validate backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm install
+
+      - name: Build backend
+        working-directory: server
+        run: npm run build
+
+  deploy-backend:
+    name: Deploy backend to DigitalOcean
+    needs: validate-backend
+    runs-on: ubuntu-latest
+    environment: production-backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy DigitalOcean App Platform app
+        uses: digitalocean/app_action/deploy@v2
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: .do/app.yaml
+          print_build_logs: true
+          print_deploy_logs: true
