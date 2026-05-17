@@ -4,9 +4,17 @@
 (function (global) {
   'use strict';
 
+  const OOS_DEFAULT_BACKEND = 'https://monkfish-app-yxidj.ondigitalocean.app';
+
+  function saasApi() { return global.OOSSaaS || null; }
+  function saasCfg() { try { return saasApi() ? saasApi().config() : {}; } catch (_) { return {}; } }
+  function isSaasSignedIn() { const c = saasCfg(); return !!(c && c.accessToken && c.user); }
+
   const VIEWS = ['today', 'repertoire', 'practice', 'games', 'insights', 'library', 'coach', 'opponent', 'settings'];
   let currentView = 'today';
   let currentOpts = {};
+  const PRODUCTION_BACKEND_URL = OOS_DEFAULT_BACKEND;
+
 
   function go(view, opts = {}) {
     if (!VIEWS.includes(view)) view = 'today';
@@ -88,6 +96,7 @@
       { kind: 'action', label: 'Drill weak lines',    run: () => startWeakDrill() },
       { kind: 'action', label: 'Import PGN',          run: () => openImport() },
       { kind: 'action', label: 'Create line manually', run: () => global.OOSViews.showLineCreationWizard(() => go('repertoire')) },
+      { kind: 'action', label: 'Sign in / create account', run: () => global.OOSAuth ? global.OOSAuth.show({ mode: 'login' }) : go('settings') },
       { kind: 'action', label: 'Backup / restore data', run: () => global.OOSViews.showBackupRestore ? global.OOSViews.showBackupRestore() : go('settings') },
       { kind: 'action', label: 'Import coach pack', run: () => global.OOSViews.importCoachPack ? global.OOSViews.importCoachPack() : go('coach') },
       { kind: 'action', label: 'Export coach pack', run: () => global.OOSViews.exportCoachPack ? global.OOSViews.exportCoachPack() : go('coach') },
@@ -191,6 +200,13 @@
         <div class="pm-role">${active.role || 'player'}</div>
       </div>`;
     panel.appendChild(head);
+    const cloud = saasCfg();
+    const accountRow = document.createElement('div');
+    accountRow.className = 'pm-cloud-status';
+    accountRow.innerHTML = cloud && cloud.user
+      ? `<span class="status-dot good"></span><span>Signed in as ${escapeHtml(cloud.user.email || 'OpeningOS account')}</span>`
+      : `<span class="status-dot warn"></span><span>Local profile only</span>`;
+    panel.appendChild(accountRow);
 
     panel.appendChild(divider());
 
@@ -221,11 +237,18 @@
     panel.appendChild(divider());
 
     // Actions
+    const account = accountStatus();
+    const statusRow = document.createElement('button');
+    statusRow.className = 'pm-action account';
+    statusRow.innerHTML = `<span class="pm-icon">☁</span><span>${account.signedIn ? 'Account: ' + escapeHtml(account.email || 'signed in') : 'Sign in / sync account'}</span>`;
+    statusRow.addEventListener('click', () => { closeProfileMenu(); showAccountGateway(() => { global.OOSData.init(); applyPersistedSettings(); syncProfileAvatar(); go('today'); }, { firstRun: false }); });
+    panel.appendChild(statusRow);
+
     const actions = [
-      { label: 'Create new profile', icon: '+', run: createProfileFlow },
+      { label: 'Create local profile', icon: '+', run: createProfileFlow },
       { label: 'Rename current profile', icon: '✎', run: renameProfileFlow },
       { label: 'Delete current profile', icon: '✕', run: deleteProfileFlow, danger: true },
-      { label: 'Sign out (clears local data)', icon: '↩', run: signOutFlow, danger: true },
+      { label: 'Reset local device data', icon: '↩', run: signOutFlow, danger: true },
     ];
     actions.forEach(a => {
       const b = document.createElement('button');
@@ -276,7 +299,7 @@
     global.OOSProfiles.remove(cur.id);
     if (!global.OOSProfiles.activeId()) {
       // No profiles left — re-prompt
-      promptCreateFirstProfile(() => bootApp());
+      promptAccountOrLocal(() => bootApp());
       return;
     }
     global.OOSData.init();
@@ -464,6 +487,8 @@
     bootApp,
     openBottomSheet,
     closeBottomSheet,
+    showAccountGateway,
+    maybeShowAccountNudge,
   };
 
   // -- Onboarding --------------------------------------------------------
@@ -501,6 +526,15 @@
     // namespaced storage when present.
     global.OOSProfiles.init();
 
+    // Product-first account experience: when the deployed backend is available,
+    // do not silently boot into local-only mode. Existing local profiles remain
+    // available through the explicit offline option, but the default product
+    // path is real signup/login + cloud sync.
+    if (global.OOSProductAuth && global.OOSProductAuth.shouldGate()) {
+      global.OOSProductAuth.showGate(() => bootApp());
+      return;
+    }
+
     // First-time experience: if no profiles exist, prompt to create one
     // before doing anything else. ?skip-onboard auto-creates a demo profile.
     if (!global.OOSProfiles.activeId()) {
@@ -509,9 +543,9 @@
         bootApp();
         return;
       }
-      promptCreateFirstProfile(() => {
+      showAccountGateway(() => {
         bootApp();
-      });
+      }, { firstRun: true });
       return;
     }
     bootApp();
@@ -528,12 +562,14 @@
     document.getElementById('tournamentBtn').setAttribute('aria-pressed', global.OOSData.isTournament() ? 'true' : 'false');
 
     syncProfileAvatar();
+    if (global.OOSAuth && global.OOSAuth.updateChrome) global.OOSAuth.updateChrome();
     wireNav();
 
     const h = (location.hash || '#today').slice(1);
     go(VIEWS.includes(h) ? h : 'today');
 
     maybeShowOnboarding();
+    maybeShowAccountNudge();
     registerServiceWorker();
   }
 
@@ -568,18 +604,260 @@
     av.style.background = `linear-gradient(135deg, ${p.color}, color-mix(in oklab, ${p.color} 60%, #91b89f))`;
   }
 
+  function accountStatus() {
+    if (global.OOSAuthBridge) {
+      const st = global.OOSAuthBridge.authState();
+      const user = st && st.user;
+      return {
+        signedIn: !!(st && st.token),
+        email: user && user.email,
+        user,
+      };
+    }
+    const bridge = global.OOSAuthBridge;
+    const bridgeState = bridge && bridge.authState ? bridge.authState() : null;
+    const API = global.OOSEnterpriseAPI;
+    const tokens = bridgeState && bridgeState.accessToken ? { accessToken: bridgeState.accessToken, user: bridgeState.user } : (API && API.tokens ? API.tokens() : {});
+    const user = tokens && tokens.user;
+    return {
+      signedIn: !!(tokens && tokens.accessToken),
+      email: user && user.email,
+      user,
+    };
+  }
+
+  function ensureBackendDefault() {
+    if (global.OOSAuthBridge && global.OOSAuthBridge.configureBackend) return global.OOSAuthBridge.configureBackend(global.OOSAuthBridge.getBackendUrl ? global.OOSAuthBridge.getBackendUrl() : PRODUCTION_BACKEND_URL);
+    const API = global.OOSEnterpriseAPI;
+    if (!API || !API.cfg || !API.saveCfg) return PRODUCTION_BACKEND_URL;
+    const cfg = API.cfg();
+    const current = String(cfg.baseUrl || '').trim();
+    if (!current && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      API.saveCfg({ baseUrl: PRODUCTION_BACKEND_URL });
+      return PRODUCTION_BACKEND_URL;
+    }
+    return current || PRODUCTION_BACKEND_URL;
+  }
+
+  function createProfileFromAccount(user, displayName) {
+    const Profiles = global.OOSProfiles;
+    const name = (displayName || user?.displayName || user?.name || user?.email || 'Player').split('@')[0].trim() || 'Player';
+    const existing = Profiles.list().find(p => (p.accountEmail || '').toLowerCase() === String(user?.email || '').toLowerCase());
+    if (existing) {
+      Profiles.activate(existing.id);
+      return existing;
+    }
+    return Profiles.create({ name, role: 'player', accountEmail: user?.email || '' });
+  }
+
+  function promptAccountOrLocal(onDone, opts = {}) {
+    const API = global.OOSEnterpriseAPI;
+    const forceAccount = !!opts.forceAccount;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal auth-modal';
+    const backend = ensureBackendDefault();
+    wrap.innerHTML = `
+      <div class="modal-back"></div>
+      <div class="modal-panel auth-panel">
+        <div class="auth-brand-row">
+          <div class="logo-mark" aria-hidden="true">♞</div>
+          <div>
+            <div class="eyebrow">OpeningOS Cloud</div>
+            <h3>Sign in to keep your prep synced</h3>
+          </div>
+        </div>
+        <p class="muted auth-copy">
+          Use a real account for cloud sync, coach workspaces, hosted sharing, and server-side Lichess/Chess.com imports. Local-only mode is still available for private offline testing.
+        </p>
+        <div class="auth-grid">
+          <label class="field"><span>Backend API</span><input class="input" id="authBackend" type="url" value="${escapeHtml(backend)}" autocomplete="url" /></label>
+          <label class="field"><span>Name</span><input class="input" id="authName" placeholder="Your name" autocomplete="name" /></label>
+          <label class="field"><span>Email</span><input class="input" id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" /></label>
+          <label class="field"><span>Password</span><input class="input" id="authPassword" type="password" placeholder="At least 10 characters" autocomplete="current-password" /></label>
+        </div>
+        <div class="auth-status" id="authStatus" role="status" aria-live="polite"></div>
+        <div class="auth-actions">
+          <button class="btn btn-primary" id="authSignup">Create account</button>
+          <button class="btn" id="authLogin">Log in</button>
+          <button class="btn btn-ghost" id="authLocal">Continue local-only</button>
+        </div>
+        <div class="auth-footnote">
+          Already deployed backend detected: <code>${escapeHtml(PRODUCTION_BACKEND_URL)}</code>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    const status = wrap.querySelector('#authStatus');
+    const backendInput = wrap.querySelector('#authBackend');
+    const nameInput = wrap.querySelector('#authName');
+    const emailInput = wrap.querySelector('#authEmail');
+    const passInput = wrap.querySelector('#authPassword');
+    const localBtn = wrap.querySelector('#authLocal');
+    if (forceAccount) localBtn.textContent = 'Use local profile instead';
+    function setStatus(msg, kind='') { status.textContent = msg || ''; status.dataset.kind = kind; }
+    async function finishWithAccount(kind) {
+      const baseUrl = backendInput.value.trim().replace(/\/+$/, '');
+      if (!global.OOSAuthBridge && (!API || !API.saveCfg)) throw new Error('SaaS account layer is not loaded. Refresh and try again.');
+      const email = emailInput.value.trim();
+      const password = passInput.value;
+      const name = nameInput.value.trim();
+      if (!baseUrl) throw new Error('Backend URL is required.');
+      if (!email || !password) throw new Error('Email and password are required.');
+      setStatus(kind === 'signup' ? 'Creating account…' : 'Signing in…');
+      let result;
+      if (global.OOSAuthBridge) {
+        result = kind === 'signup' ? await global.OOSAuthBridge.signUp(email, password, name || email, baseUrl) : await global.OOSAuthBridge.signIn(email, password, baseUrl);
+      } else {
+        API.saveCfg({ baseUrl, autoSync: true });
+        result = kind === 'signup' ? await API.signUp(email, password, name || undefined) : await API.login(email, password);
+      }
+      createProfileFromAccount(result.user || { email }, name || email);
+      wrap.remove();
+      onDone && onDone();
+      setTimeout(() => {
+        try {
+          if (global.OOSAuthBridge && global.OOSAuthBridge.signedIn() && global.OOSSaaS && global.OOSSaaS.pushSnapshot) global.OOSSaaS.pushSnapshot().catch(() => {});
+          else if (global.OOSEnterpriseAPI && global.OOSData && global.OOSData.exportSnapshot) global.OOSEnterpriseAPI.pushSnapshot().catch(() => {});
+        } catch (_) {}
+      }, 800);
+      toast(kind === 'signup' ? 'Account created and sync enabled' : 'Signed in and sync enabled', 'good');
+    }
+    async function run(kind) {
+      try { await finishWithAccount(kind); }
+      catch (err) { setStatus(err.message || String(err), 'warn'); }
+    }
+    wrap.querySelector('#authSignup').addEventListener('click', () => run('signup'));
+    wrap.querySelector('#authLogin').addEventListener('click', () => run('login'));
+    localBtn.addEventListener('click', () => {
+      const name = (nameInput.value || '').trim() || 'Player';
+      if (!global.OOSProfiles.activeId()) global.OOSProfiles.create({ name, role: 'player' });
+      wrap.remove();
+      onDone && onDone();
+      toast('Using local-only profile. You can sign in later from the avatar menu or Settings.', 'info');
+    });
+    passInput.addEventListener('keydown', e => { if (e.key === 'Enter') run(emailInput.value ? 'login' : 'signup'); });
+    setTimeout(() => emailInput.focus(), 60);
+  }
+
+  // Backwards-compatible alias for older code paths.
+
+  function defaultBackendUrl() {
+    const cfg = saasCfg();
+    return (cfg && (cfg.backendUrl || cfg.baseUrl)) || OOS_DEFAULT_BACKEND;
+  }
+
+  function ensureProfileFromAccount(user, displayName) {
+    const Profiles = global.OOSProfiles;
+    if (!Profiles.activeId()) {
+      const name = displayName || (user && (user.name || user.displayName || user.email)) || 'Player';
+      Profiles.create({ name: String(name).split('@')[0] || 'Player', role: 'player' });
+    }
+  }
+
+  function showAccountGateway(onDone, opts = {}) {
+    const API = saasApi();
+    if (!API) return promptCreateFirstProfile(onDone);
+    const wrap = document.createElement('div');
+    wrap.className = 'modal account-gateway';
+    const signed = saasCfg();
+    wrap.innerHTML = `
+      <div class="modal-back"></div>
+      <div class="modal-panel account-panel" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+        <div class="account-hero">
+          <div class="account-logo">♔</div>
+          <div>
+            <div class="eyebrow">OpeningOS Cloud</div>
+            <h3 id="accountTitle">${signed && signed.user ? 'Your account is connected' : 'Sign in to sync your preparation'}</h3>
+            <p class="muted">Use a real account for cloud sync, game imports, coach workspaces, sharing, and recovery. You can still continue local-only for private offline study.</p>
+          </div>
+        </div>
+        <div class="account-grid">
+          <label class="field"><span>Backend API</span><input class="input" id="acctBackend" type="url" value="${escapeHtml(defaultBackendUrl())}" /></label>
+          <label class="field"><span>Email</span><input class="input" id="acctEmail" type="email" autocomplete="email" placeholder="you@example.com" value="${escapeHtml((signed.user && signed.user.email) || '')}" /></label>
+          <label class="field"><span>Password</span><input class="input" id="acctPassword" type="password" autocomplete="current-password" placeholder="At least 10 characters" /></label>
+          <label class="field"><span>Display name</span><input class="input" id="acctName" type="text" autocomplete="name" placeholder="Your name" value="${escapeHtml((global.OOSProfiles.active() || {}).name || '')}" /></label>
+        </div>
+        <div class="account-message muted" id="acctMessage">${signed && signed.user ? 'Signed in as ' + escapeHtml(signed.user.email || '') : 'Recommended: create an account before building serious prep.'}</div>
+        <div class="account-actions">
+          <button class="btn btn-primary" id="acctSignup">Create account</button>
+          <button class="btn" id="acctLogin">Log in</button>
+          <button class="btn btn-ghost" id="acctLocal">Continue local-only</button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    const backend = wrap.querySelector('#acctBackend');
+    const email = wrap.querySelector('#acctEmail');
+    const pass = wrap.querySelector('#acctPassword');
+    const name = wrap.querySelector('#acctName');
+    const msg = wrap.querySelector('#acctMessage');
+    const finish = async (mode) => {
+      try {
+        if (mode === 'local') {
+          localStorage.setItem('oos.account.localOnly', 'true');
+          if (!global.OOSProfiles.activeId()) global.OOSProfiles.create({ name: (name.value || 'Player').trim(), role: 'player' });
+          wrap.remove();
+          onDone && onDone();
+          return;
+        }
+        if (!email.value.trim()) throw new Error('Enter your email.');
+        if (!pass.value || pass.value.length < 10) throw new Error('Password must be at least 10 characters.');
+        API.configure({ backendUrl: backend.value.trim() || OOS_DEFAULT_BACKEND });
+        msg.classList.remove('bad-text');
+        msg.textContent = mode === 'signup' ? 'Creating account…' : 'Signing in…';
+        const out = mode === 'signup'
+          ? await API.signup(email.value.trim(), pass.value, name.value.trim() || email.value.trim().split('@')[0])
+          : await API.login(email.value.trim(), pass.value);
+        ensureProfileFromAccount(out.user || { email: email.value.trim() }, name.value.trim());
+        try { await API.pullSnapshot(); } catch (_) {}
+        try { await API.pushSnapshot(); } catch (_) {}
+        localStorage.removeItem('oos.account.localOnly');
+        wrap.remove();
+        global.OOSApp && global.OOSApp.toast && global.OOSApp.toast(mode === 'signup' ? 'Account created and sync connected' : 'Signed in and sync connected', 'good');
+        onDone && onDone();
+      } catch (err) {
+        msg.textContent = err.message || String(err);
+        msg.classList.add('bad-text');
+      }
+    };
+    wrap.querySelector('#acctSignup').addEventListener('click', () => finish('signup'));
+    wrap.querySelector('#acctLogin').addEventListener('click', () => finish('login'));
+    wrap.querySelector('#acctLocal').addEventListener('click', () => finish('local'));
+    wrap.querySelector('.modal-back').addEventListener('click', () => { if (!opts.firstRun) wrap.remove(); });
+    setTimeout(() => (signed && signed.user ? pass : email).focus(), 60);
+  }
+
+  function maybeShowAccountNudge() {
+    if (isSaasSignedIn() || localStorage.getItem('oos.account.localOnly') === 'true') return;
+    const app = document.getElementById('app');
+    if (!app || document.getElementById('cloudAccountBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'cloudAccountBanner';
+    banner.className = 'cloud-account-banner';
+    banner.innerHTML = `<div><strong>Cloud sync is not connected.</strong><span> Sign in for cross-device prep, backend game imports, sharing, and recovery.</span></div><div class="row"><button class="btn btn-sm btn-primary">Sign in</button><button class="btn btn-sm btn-ghost">Stay local</button></div>`;
+    banner.querySelector('.btn-primary').addEventListener('click', () => showAccountGateway(() => go(currentView, currentOpts)));
+    banner.querySelector('.btn-ghost').addEventListener('click', () => { localStorage.setItem('oos.account.localOnly', 'true'); banner.remove(); });
+    app.prepend(banner);
+  }
+
   function promptCreateFirstProfile(onDone) {
-    // Build a tiny modal directly to avoid bootstrap dependency on views/data.
+    // Production first-run: prefer the deployed backend account flow. It still
+    // offers a clear local-only fallback, but users should see real signup/login
+    // first instead of thinking OpeningOS is only a local profile switcher.
+    if (global.OOSAuthBridge && typeof global.OOSAuthBridge.showFirstRun === 'function') {
+      global.OOSAuthBridge.showFirstRun(onDone);
+      return;
+    }
+
+    // Fallback local-only modal if the account bridge did not load.
     const wrap = document.createElement('div');
     wrap.className = 'modal';
     wrap.innerHTML = `
       <div class="modal-back"></div>
       <div class="modal-panel">
         <div class="eyebrow">Welcome to OpeningOS</div>
-        <h3 style="margin-top:6px">Who's training today?</h3>
+        <h3 style="margin-top:6px">Create a local profile</h3>
         <p class="muted" style="font-size:13px;margin-top:6px">
-          Create a profile to keep your repertoire, notes, and progress separate.
-          Multiple people can use this device — switch profiles any time.
+          This device-local profile keeps your repertoire, notes, and progress separate.
+          Connect a cloud account later from Settings.
         </p>
         <div class="row" style="margin-top:14px;gap:8px;flex-direction:column;align-items:stretch">
           <input class="input" id="firstProfileName" placeholder="Your name" autocomplete="off" />

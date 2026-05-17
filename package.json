@@ -21,7 +21,7 @@
     "backend:migrate:print": "cd server && npm run migrate:print",
     "qa:mobile": "node tools/mobile_pwa_qa.mjs",
     "deploy:local": "python3 -m http.server 4173",
-    "db:migrate": "psql \"$DATABASE_URL\" -f server/migrations/001_init.sql && psql \"$DATABASE_URL\" -f server/migrations/002_saas_complete.sql",
+    "db:migrate": "psql \"$DATABASE_URL\" -f server/migrations/001_init.sql && psql \"$DATABASE_URL\" -f server/migrations/002_saas_complete.sql && psql \"$DATABASE_URL\" -f server/migrations/003_fix_safe_rls.sql",
     "validate:server": "cd server && npm run build",
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json"
   },

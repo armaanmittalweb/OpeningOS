@@ -18,40 +18,23 @@ jobs:
   frontend-static:
     name: Frontend static validation
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-
-      - name: Install frontend dependencies
-        run: npm install
-
-      - name: Validate frontend
-        run: npm run validate:full
+      - run: npm install
+      - run: npm run validate:full
 
   backend-build:
     name: Backend TypeScript build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Install backend dependencies
-        working-directory: server
+      - working-directory: server
         run: npm install
-
-      - name: Build backend
-        working-directory: server
+      - working-directory: server
         run: npm run build

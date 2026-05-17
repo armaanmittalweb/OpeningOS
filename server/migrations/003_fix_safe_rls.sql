@@ -8,19 +8,9 @@ begin
     where table_schema = 'public'
       and column_name = 'user_id'
       and table_name in (
-        'user_sessions',
-        'password_reset_tokens',
-        'recovery_codes',
-        'oauth_accounts',
-        'passkeys',
-        'sync_conflicts',
-        'sync_change_batches',
-        'position_comments',
-        'share_access_logs',
-        'team_libraries',
-        'team_library_items',
-        'billing_events',
-        'audit_events'
+        'user_sessions','password_reset_tokens','recovery_codes','oauth_accounts','passkeys',
+        'sync_conflicts','sync_change_batches','position_comments','share_access_logs',
+        'team_libraries','team_library_items','billing_events','audit_events'
       )
   loop
     execute format('alter table %I enable row level security', r.table_name);

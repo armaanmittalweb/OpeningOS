@@ -4,10 +4,12 @@
  */
 (function (global) {
   'use strict';
+  const DEPLOYED_BACKEND_URL = 'https://monkfish-app-yxidj.ondigitalocean.app';
   const CFG_KEY = 'oos.enterprise.api.v1';
   const TOKEN_KEY = 'oos.enterprise.tokens.v1';
   const CLIENT_ID_KEY = 'oos.enterprise.clientId.v1';
-  const DEFAULT_API = (location.origin.includes('localhost') ? 'http://localhost:8787' : ''); // Set via settings in app if not localhost
+  function defaultApi() { const meta = document.querySelector('meta[name="openingos-api-url"]'); const fromMeta = meta && meta.getAttribute('content'); const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:8787' : ''; return String((window.OOSDeployment && window.OOSDeployment.backendUrl) || window.OPENINGOS_BACKEND_URL || fromMeta || local || DEPLOYED_BACKEND_URL || '').replace(/\/+$/, ''); }
+  const DEFAULT_API = defaultApi();
 
   function json(x, fallback) { try { return JSON.parse(x); } catch (_) { return fallback; } }
   function cfg() { return Object.assign({ baseUrl: DEFAULT_API, autoSync: false, realtime: false }, json(localStorage.getItem(CFG_KEY) || '{}', {})); }
@@ -31,7 +33,7 @@
     return body;
   }
 
-  async function signUp(email, password, displayName) { const r = await request('/auth/signup', { method: 'POST', body: { email, password, displayName } }); saveTokens(r); return r; }
+  async function signUp(email, password, displayName) { const r = await request('/auth/signup', { method: 'POST', body: { email, password, name: displayName || String(email || '').split('@')[0] } }); saveTokens(r); return r; }
   async function login(email, password) { const r = await request('/auth/login', { method: 'POST', body: { email, password } }); saveTokens(r); return r; }
   async function logout() { try { await request('/auth/logout', { method: 'POST' }); } finally { clearTokens(); } }
   async function me() { return request('/me'); }

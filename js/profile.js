@@ -57,7 +57,7 @@
     active() {
       return this.state.profiles.find(p => p.id === this.state.activeId) || null;
     },
-    create({ name, role = 'player' }) {
+    create({ name, role = 'player', accountEmail = '' }) {
       const id = uid();
       const safeName = cleanName(name);
       const profile = {
@@ -67,6 +67,7 @@
         color: pickColor(id),
         initials: initials(safeName),
         createdAt: Date.now(),
+        accountEmail: String(accountEmail || '').toLowerCase(),
       };
       this.state.profiles.push(profile);
       this.state.activeId = id;

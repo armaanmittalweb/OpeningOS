@@ -709,10 +709,7 @@
       return opts.includeRetired ? all : all.filter(activeLine);
     },
     line(id) { return this.data.lines.find(l => l.id === id); },
-    positionsForLine(id) {
-      if (!this.state) this.init();
-      return this.data.byLine[id] || [];
-    },
+    positionsForLine(id) { return this.data.byLine[id] || []; },
     cardsFromLine(id, fromPly = 0) { return this.positionsForLine(id).filter(p => p.ply >= Math.max(1, fromPly || 1)); },
     position(id) { return this.data.byId[id]; },
     allPositions(opts = {}) {
@@ -922,7 +919,6 @@
 
     // Add a user-created game to the active profile.
     addUserGame(game) {
-      if (!this.state) this.init();
       const id = game.id || ('g_' + Math.random().toString(36).slice(2, 9));
       const matched = game.lineId || (this.bestLineMatchForPgn ? (this.bestLineMatchForPgn(game.pgn || '') || {}).lineId : null) || null;
       const full = Object.assign({ id, played: 'just now', site: 'Imported', vs: 'unknown', vsRating: 0, yourColor: 'w', result: 'd', timeControl: '?', lineId: matched, status: matched ? 'matched' : 'unmatched' }, game, { id });
@@ -1033,7 +1029,6 @@
 
     // Add a user-created line. Materialize positions into the in-memory data.
     addUserLine(line) {
-      if (!this.state) this.init();
       const id = line.id || ('line_' + Math.random().toString(36).slice(2, 8));
       const newLine = {
         id,
@@ -1346,7 +1341,6 @@
       return matches.slice(0, 8);
     },
     deepReviewGame(game) {
-      if (!this.state) this.init();
       if (!game) return { matches: [], deviations: [], moments: [] };
       const matches = this.matchGameToRepertoire(game.pgn || '');
       const best = game.lineId ? { lineId: game.lineId } : matches[0];
@@ -1499,7 +1493,6 @@
     },
 
     exportSnapshot() {
-      if (!this.state) this.init();
       const profiles = global.OOSProfiles && global.OOSProfiles.list ? global.OOSProfiles.list() : [];
       const profileStates = {};
       profiles.forEach(p => {
@@ -1523,7 +1516,6 @@
       };
     },
     importSnapshot(snapshot) {
-      if (!this.state) this.init();
       if (!snapshot || typeof snapshot !== 'object') throw new Error('Invalid backup file.');
       const incoming = snapshot.state || snapshot;
       if (!incoming || typeof incoming !== 'object') throw new Error('Backup has no state object.');

@@ -3,7 +3,7 @@
  * Cache-first for static assets (CSS/JS/fonts) once they've been seen.
  * No external API calls are cached.
  */
-const VERSION = 'oos-v8-saas-complete';
+const VERSION = 'oos-v12-account-import-ui-quality';
 const STATIC_CACHE = 'oos-static-' + VERSION;
 
 const STATIC_ASSETS = [
@@ -17,6 +17,7 @@ const STATIC_ASSETS = [
   './icons/icon-512.svg',
   './icons/icon-192.svg',
   './vendor/chess.min.js',
+  './js/env.js',
   './js/profile.js',
   './js/pgn.js',
   './js/api.js',
@@ -38,6 +39,7 @@ const STATIC_ASSETS = [
   './js/product.js',
   './js/product_plus.js',
   './js/cloud_sync.js',
+  './js/deployment_config.js',
   './js/saas_client.js',
   './js/enterprise_api.js',
   './js/stockfish_client.js',
@@ -50,10 +52,12 @@ const STATIC_ASSETS = [
   './js/launch.js',
   './js/ui_polish.js',
   './js/saas_ui.js',
+  './js/account_gateway.js',
   './js/settings_enforcement.js',
   './js/accessibility.js',
   './js/accessibility_complete.js',
   './js/observability.js',
+  './js/product_auth.js',
   './js/app.js',
 ];
 

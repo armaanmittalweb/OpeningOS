@@ -5,8 +5,11 @@
  */
 (function (global) {
   'use strict';
+  const DEFAULT_BACKEND_URL = (global.OPENINGOS_ENV && global.OPENINGOS_ENV.backendUrl) || 'https://monkfish-app-yxidj.ondigitalocean.app';
   const KEY = 'oos.saas.config.v2';
-  const DEFAULT = { backendUrl: '', accessToken: '', refreshToken: '', user: null, autoSync: false, deviceId: '' };
+  const DEPLOY = global.OOSDeployment || {};
+  const DEFAULT_BACKEND = DEPLOY.backendUrl || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:8787' : '');
+  const DEFAULT = { backendUrl: DEFAULT_BACKEND, accessToken: '', refreshToken: '', user: null, autoSync: false, deviceId: '' };
   function read() { try { return Object.assign({}, DEFAULT, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (_) { return Object.assign({}, DEFAULT); } }
   function write(patch) { const next = Object.assign(read(), patch || {}); if (!next.deviceId) next.deviceId = deviceId(); localStorage.setItem(KEY, JSON.stringify(next)); return next; }
   function deviceId() { let id = localStorage.getItem('oos.device.id'); if (!id) { id = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('oos.device.id', id); } return id; }
@@ -30,9 +33,9 @@
 
   const api = {
     read, config, configured, token,
-    configure: patch => write(Object.assign({}, patch, { backendUrl: patch && patch.backendUrl ? String(patch.backendUrl).replace(/\/+$/, '') : config().backendUrl })),
+    configure: patch => { const next = Object.assign({}, patch || {}); if ('backendUrl' in next) next.backendUrl = String(next.backendUrl || DEFAULT_BACKEND || '').replace(/\/+$/, ''); return write(next); },
     request,
-    signup: (email, password, displayName) => request('POST', '/auth/signup', { email, password, displayName }, { auth: false }).then(remember),
+    signup: (email, password, displayName) => request('POST', '/auth/signup', { email, password, name: displayName || (String(email || '').split('@')[0]) }, { auth: false }).then(remember),
     login: (email, password) => request('POST', '/auth/login', { email, password }, { auth: false }).then(remember),
     refresh: () => request('POST', '/auth/refresh', { refreshToken: config().refreshToken }, { auth: false }).then(remember),
     logout: () => request('POST', '/auth/logout', {}).finally(() => write({ accessToken: '', refreshToken: '', user: null })),
@@ -65,6 +68,7 @@
     shareAccessLogs: id => request('GET', '/shares/' + encodeURIComponent(id) + '/access'),
     createImportJob: (source, payload) => request('POST', '/imports/jobs', { source, payload: payload || {} }),
     importJob: id => request('GET', '/imports/jobs/' + encodeURIComponent(id)),
+    getImportJob: id => request('GET', '/imports/jobs/' + encodeURIComponent(id)),
     analyzeFen: (fen, depth) => request('POST', '/analysis/quick', { fen, depth: depth || 12 }),
     createAnalysisJob: payload => request('POST', '/analysis/jobs', payload || {}),
     subscription: () => request('GET', '/billing/subscription'),
@@ -75,6 +79,20 @@
     adminJobs: () => request('GET', '/admin/jobs'),
     deleteAccount: () => request('DELETE', '/account'),
   };
+  // Product-facing compatibility aliases used by account_gateway.js.
+  api.setConfig = api.configure;
+  api.signUp = (emailOrBody, password, displayName) => {
+    const b = typeof emailOrBody === 'object' ? emailOrBody : { email: emailOrBody, password, name: displayName };
+    return api.signup(b.email, b.password, b.name || b.displayName);
+  };
+  api.signIn = (emailOrBody, password) => {
+    const b = typeof emailOrBody === 'object' ? emailOrBody : { email: emailOrBody, password };
+    return api.login(b.email, b.password);
+  };
+  api.signOut = api.logout;
+  api.signedIn = () => !!(config().backendUrl && config().accessToken && config().user);
+  api.queueImportJob = api.createImportJob;
+  api.importJob = api.importJob;
   function h(tag, attrs, children) { const n = document.createElement(tag); attrs = attrs || {}; Object.keys(attrs).forEach(k => { if (k === 'class') n.className = attrs[k]; else if (k === 'on') Object.keys(attrs[k]).forEach(ev => n.addEventListener(ev, attrs[k][ev])); else if (k === 'style') Object.assign(n.style, attrs[k]); else if (k in n) n[k] = attrs[k]; else n.setAttribute(k, attrs[k]); }); (Array.isArray(children) ? children : [children]).forEach(c => { if (c != null) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return n; }
   function field(label, value, type) { const input = h('input', { class: 'input', type: type || 'text', value: value || '', placeholder: label }); return h('label', { class: 'field oos-field' }, [h('span', {}, [label]), input]); }
   function toast(message, kind) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast(message, kind || 'info'); else console.log(message); }

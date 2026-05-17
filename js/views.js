@@ -3795,7 +3795,7 @@
       panel.appendChild(el('div', { class: 'eyebrow' }, ['Import games']));
       panel.appendChild(el('h3', {}, ['Bring your real games or theory']));
       panel.appendChild(el('p', { class: 'muted', style: { fontSize: '13px', marginTop: '4px' } }, [
-        'PGN, Lichess, or Chess.com — we parse, validate, and queue them. Heavy imports get an anti-overload warning.',
+        'PGN, Lichess, or Chess.com — signed-in accounts use the backend importer first, then we parse, validate, and queue the games locally.',
       ]));
 
       // Source tabs
@@ -3836,9 +3836,7 @@
           el('span', { class: 'muted', style: { fontSize: '12px' } }, ['games']),
         ]));
         panel.appendChild(el('div', { class: 'muted', style: { fontSize: '12px', marginTop: '8px' } }, [
-          'Public profiles only. We use the official ',
-          source === 'lichess' ? 'Lichess' : 'Chess.com',
-          ' API directly from your browser — your data stays local.',
+          'Public profiles only. Signed-in accounts use your OpeningOS backend securely fetches games for reliability; offline users fall back to public browser APIs.',
         ]));
         const fetchBtn = el('button', { class: 'btn btn-primary', on: { click: async () => {
           const u = username.value.trim();
@@ -3848,9 +3846,7 @@
           fetchBtn.textContent = 'Fetching…';
           fetchBtn.disabled = true;
           try {
-            const games = source === 'lichess'
-              ? await global.OOSApi.lichessUserGames(u, parseInt(max.value, 10) || 20)
-              : await global.OOSApi.chesscomUserGames(u, parseInt(max.value, 10) || 20);
+            const games = await fetchRemoteGames(source, u, parseInt(max.value, 10) || 20);
             // Convert to parsedGames using OOSPgn
             const all = [];
             games.forEach(g => {
@@ -3876,6 +3872,21 @@
         ]));
         setTimeout(() => username.focus(), 60);
       }
+    }
+
+    async function fetchRemoteGames(sourceKind, username, maxGames) {
+      const useServer = global.OOSAccountGateway && global.OOSAccountGateway.signedIn && global.OOSAccountGateway.signedIn() && global.OOSAccountGateway.importGames;
+      if (useServer) {
+        try {
+          const serverGames = await global.OOSAccountGateway.importGames(sourceKind, username, maxGames);
+          if (serverGames && serverGames.length) return serverGames;
+        } catch (err) {
+          global.OOSApp.toast('Server import failed, trying browser fallback: ' + (err.message || err), 'warn');
+        }
+      }
+      return sourceKind === 'lichess'
+        ? await global.OOSApi.lichessUserGames(username, maxGames)
+        : await global.OOSApi.chesscomUserGames(username, maxGames);
     }
 
     function reportInvalid(msg) {

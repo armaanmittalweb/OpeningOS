@@ -9,7 +9,8 @@
   'use strict';
 
   const STORAGE_KEY = 'openingos.saas.v1';
-  const DEFAULT_BACKEND = '';
+  function defaultBackendUrl() { const meta = document.querySelector('meta[name="openingos-api-url"]'); const fromMeta = meta && meta.getAttribute('content'); const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:8787' : ''; return String(global.OPENINGOS_BACKEND_URL || fromMeta || local || '').replace(/\/+$/, ''); }
+  const DEFAULT_BACKEND = defaultBackendUrl();
   const PROVIDERS = ['google', 'github', 'lichess'];
 
   function now() { return Date.now(); }

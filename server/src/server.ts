@@ -37,7 +37,7 @@ app.decorate('requireAdmin', async function requireAdmin(req: any, reply: any) {
 });
 
 const Email = z.string().email().transform(v => v.toLowerCase());
-const SignupSchema = z.object({ email: Email, password: z.string().min(10), name: z.string().trim().min(1).max(120).optional() });
+const SignupSchema = z.object({ email: Email, password: z.string().min(10), name: z.string().trim().min(1).max(120).optional(), displayName: z.string().trim().min(1).max(120).optional() });
 const LoginSchema = z.object({ email: Email, password: z.string().min(1) });
 const SnapshotSchema = z.object({ profileId: z.string().min(1), version: z.number().int().nonnegative().default(0), payload: z.record(z.any()), clientUpdatedAt: z.number().int().optional() });
 const ChangeSchema = z.object({ id: z.string().optional(), kind: z.string().min(1), data: z.record(z.any()).default({}), deleted: z.boolean().default(false), updatedAt: z.number().int().optional(), deviceId: z.string().optional(), version: z.number().int().optional() });
@@ -71,9 +71,9 @@ app.get('/health', async () => ({ ok: true, service: 'openingos-backend', mode: 
 app.post('/auth/signup', async (req, reply) => {
   const body = SignupSchema.parse(req.body);
   const user = await transaction(async client => {
-    const u = await client.query<{ id: string; email: string; role: string }>(`insert into app_users(email, display_name, role) values($1,$2,'user') on conflict(email) do update set updated_at=now() returning id,email,role`, [body.email, body.name || body.email.split('@')[0]]);
+    const u = await client.query<{ id: string; email: string; role: string }>(`insert into app_users(email, display_name, role) values($1,$2,'user') on conflict(email) do update set updated_at=now() returning id,email,role`, [body.email, body.displayName || body.name || body.email.split('@')[0]]);
     await client.query(`insert into user_passwords(user_id,password_hash) values($1,$2) on conflict(user_id) do update set password_hash=excluded.password_hash, updated_at=now()`, [u.rows[0].id, hashPassword(body.password)]);
-    await client.query(`insert into profiles(user_id,name,role) values($1,$2,'player') on conflict do nothing`, [u.rows[0].id, body.name || 'Player']);
+    await client.query(`insert into profiles(user_id,name,role) values($1,$2,'player') on conflict do nothing`, [u.rows[0].id, body.displayName || body.name || 'Player']);
     return u.rows[0];
   });
   await audit(user.id, 'auth.signup', { email: user.email }, req);
@@ -239,9 +239,110 @@ app.delete('/shares/:id', { preHandler: app.authenticate }, async (req: any) => 
 app.get('/teams/libraries', { preHandler: app.authenticate }, async (req: any) => { const u = req.user as AuthUser; const r = await query('select * from team_libraries where owner_user_id=$1 or id in (select team_library_id from team_members where user_id=$1)', [u.id]); return { libraries: r.rows }; });
 
 // --- Import jobs and chess analysis -------------------------------------
-app.post('/imports/jobs', { preHandler: app.authenticate }, async (req: any) => { const u = req.user as AuthUser; const b = z.object({ source: z.enum(['pgn','lichess','chesscom','study','file']), payload: z.record(z.any()).default({}) }).parse(req.body); const r = await query<{ id:string }>('insert into import_jobs(user_id,source,payload,status) values($1,$2,$3,\'queued\') returning id', [u.id,b.source,b.payload]); await audit(u.id,'import.job.queued',{ jobId: r.rows[0].id, source: b.source },req); processImportJob(r.rows[0].id).catch(err => app.log.error({ err }, 'import worker failed')); return { id: r.rows[0].id, status: 'queued' }; });
-app.get('/imports/jobs/:id', { preHandler: app.authenticate }, async (req: any) => { const u = req.user as AuthUser; const r = await query('select id,source,status,result,error,created_at,updated_at from import_jobs where user_id=$1 and id=$2', [u.id,String(req.params.id)]); return r.rows[0] || null; });
-async function processImportJob(id: string) { const r = await query<any>('select * from import_jobs where id=$1', [id]); const job = r.rows[0]; if (!job) return; await query('update import_jobs set status=\'running\',updated_at=now() where id=$1', [id]); try { let result: any = { games: [], note: 'No remote fetch performed.' }; if (job.source === 'lichess' && job.payload.username) { const url = `https://lichess.org/api/games/user/${encodeURIComponent(job.payload.username)}?max=${Number(job.payload.max || 20)}&pgnInJson=true`; const res = await fetch(url, { headers: { Accept: 'application/x-ndjson' } }); const text = await res.text(); result = { ndjson: text.slice(0, 500000), source: 'lichess' }; } else if (job.source === 'chesscom' && job.payload.username) { const archives = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(job.payload.username)}/games/archives`).then(x => x.json()); result = { archives, source: 'chesscom' }; } else if (job.source === 'pgn') result = { pgn: job.payload.pgn || '', source: 'pgn' }; await query('update import_jobs set status=\'done\',result=$2,updated_at=now() where id=$1', [id,result]); } catch (err: any) { await query('update import_jobs set status=\'failed\',error=$2,updated_at=now() where id=$1', [id,err.message || String(err)]); } }
+type ImportedGame = { pgn: string; headers?: Record<string, any>; source?: string; sourceId?: string; url?: string; endTime?: number | null };
+const ImportSourceSchema = z.object({ source: z.enum(['lichess','chesscom']), username: z.string().trim().min(1).max(80), max: z.number().int().min(1).max(100).default(25) });
+
+app.post('/imports/fetch-games', { preHandler: app.authenticate }, async (req: any) => {
+  const u = req.user as AuthUser;
+  const b = ImportSourceSchema.parse(req.body);
+  const result = await fetchRemoteGames(b.source, b.username, b.max);
+  await audit(u.id, 'import.remote.fetch', { source: b.source, username: b.username, count: result.games.length }, req);
+  return result;
+});
+
+app.post('/imports/jobs', { preHandler: app.authenticate }, async (req: any) => {
+  const u = req.user as AuthUser;
+  const b = z.object({ source: z.enum(['pgn','lichess','chesscom','study','file']), payload: z.record(z.any()).default({}) }).parse(req.body);
+  const r = await query<{ id:string }>('insert into import_jobs(user_id,source,payload,status) values($1,$2,$3,\'queued\') returning id', [u.id,b.source,b.payload]);
+  await audit(u.id,'import.job.queued',{ jobId: r.rows[0].id, source: b.source },req);
+  processImportJob(r.rows[0].id).catch(err => app.log.error({ err }, 'import worker failed'));
+  return { id: r.rows[0].id, status: 'queued' };
+});
+app.get('/imports/jobs/:id', { preHandler: app.authenticate }, async (req: any) => {
+  const u = req.user as AuthUser;
+  const r = await query('select id,source,status,result,error,created_at,updated_at from import_jobs where user_id=$1 and id=$2', [u.id,String(req.params.id)]);
+  return r.rows[0] || null;
+});
+
+
+app.post('/imports/fetch', { preHandler: app.authenticate }, async (req: any) => {
+  const body = z.object({ source: z.enum(['lichess','chesscom','pgn']), username: z.string().trim().optional(), max: z.number().int().min(1).max(100).default(20), pgn: z.string().optional() }).parse(req.body || {});
+  if (body.source === 'pgn') return { source: 'pgn', count: body.pgn ? splitPgnBundle(body.pgn).length : 0, games: splitPgnBundle(body.pgn || '').map(pgn => ({ pgn, headers: {} })) };
+  if (!body.username) throw new Error('Username is required.');
+  return fetchRemoteGames(body.source, body.username, body.max);
+});
+
+async function processImportJob(id: string) {
+  const r = await query<any>('select * from import_jobs where id=$1', [id]);
+  const job = r.rows[0];
+  if (!job) return;
+  await query('update import_jobs set status=\'running\',updated_at=now() where id=$1', [id]);
+  try {
+    let result: any;
+    const max = Number(job.payload?.max || job.payload?.limit || 25);
+    if (job.source === 'lichess' && job.payload.username) result = await fetchRemoteGames('lichess', String(job.payload.username), max);
+    else if (job.source === 'chesscom' && job.payload.username) result = await fetchRemoteGames('chesscom', String(job.payload.username), max);
+    else if (job.source === 'pgn') {
+      const pgn = String(job.payload?.pgn || '');
+      const games = splitPgnBundle(pgn).map(g => ({ pgn: g, headers: {} }));
+      result = { source: 'pgn', count: games.length, games, importedAt: new Date().toISOString() };
+    }
+    else result = { source: job.source, count: 0, games: [], warning: 'Unsupported import payload.' };
+    await query('update import_jobs set status=\'done\',result=$2,updated_at=now() where id=$1', [id,result]);
+  } catch (err: any) {
+    await query('update import_jobs set status=\'failed\',error=$2,updated_at=now() where id=$1', [id,err.message || String(err)]);
+  }
+}
+
+async function fetchRemoteGames(source: 'lichess' | 'chesscom', username: string, max = 20) {
+  const safeMax = Math.max(1, Math.min(Number(max || 20), 100));
+  if (source === 'lichess') return fetchLichessGames(username, safeMax);
+  return fetchChesscomGames(username, safeMax);
+}
+
+async function fetchLichessGames(username: string, max: number) {
+  const url = `https://lichess.org/api/games/user/${encodeURIComponent(username)}?max=${max}&moves=true&tags=true&clocks=false&evals=false&opening=true`;
+  const res = await fetch(url, { headers: { Accept: 'application/x-chess-pgn', 'User-Agent': 'OpeningOS/1.0 (+https://github.com/armaanmittalweb/OpeningOS)' } });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Lichess import failed (${res.status}): ${text.slice(0, 180) || res.statusText}`);
+  const games = splitPgnBundle(text).slice(0, max).map(pgn => ({ pgn, headers: { Site: 'Lichess' } }));
+  return { source: 'lichess', username, count: games.length, games, pgnBundle: text.slice(0, 1_500_000), importedAt: new Date().toISOString() };
+}
+
+async function fetchChesscomGames(username: string, max: number) {
+  const user = username.trim().toLowerCase();
+  const headers = { Accept: 'application/json', 'User-Agent': 'OpeningOS/1.0 (+https://github.com/armaanmittalweb/OpeningOS)' };
+  const archivesRes = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`, { headers });
+  const archivesText = await archivesRes.text();
+  if (!archivesRes.ok) throw new Error(`Chess.com archives failed (${archivesRes.status}): ${archivesText.slice(0, 180) || archivesRes.statusText}`);
+  let archives: string[] = [];
+  try { archives = (JSON.parse(archivesText).archives || []) as string[]; } catch { throw new Error('Chess.com archives response was not JSON.'); }
+  const games: any[] = [];
+  const warnings: string[] = [];
+  for (const archiveUrl of archives.slice().reverse()) {
+    if (games.length >= max) break;
+    try {
+      const ar = await fetch(archiveUrl, { headers });
+      const bodyText = await ar.text();
+      if (!ar.ok) { warnings.push(`Skipped ${archiveUrl}: ${ar.status}`); continue; }
+      const body = JSON.parse(bodyText);
+      const monthGames = Array.isArray(body.games) ? body.games.slice().reverse() : [];
+      for (const g of monthGames) {
+        if (games.length >= max) break;
+        if (g && g.pgn) games.push({ pgn: g.pgn, headers: { Site: 'Chess.com', URL: g.url || '', UUID: g.uuid || '', TimeControl: g.time_control || g.time_class || '' }, uuid: g.uuid || '', url: g.url || '', endTime: g.end_time || null, timeClass: g.time_class || '' });
+      }
+    } catch (err: any) {
+      warnings.push(`Skipped ${archiveUrl}: ${err.message || String(err)}`);
+    }
+  }
+  return { source: 'chesscom', username: user, count: games.length, games, archivesChecked: archives.length, warnings, importedAt: new Date().toISOString() };
+}
+
+function splitPgnBundle(text: string) {
+  const trimmed = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!trimmed) return [];
+  return trimmed.split(/\n\n(?=\[)/).map(s => s.trim()).filter(Boolean);
+}
 app.post('/analysis/quick', { preHandler: app.authenticate }, async (req) => { const b = z.object({ fen: z.string(), depth: z.number().int().min(1).max(20).default(12) }).parse(req.body); return { result: await runEngine(b.fen, b.depth) }; });
 app.post('/analysis/jobs', { preHandler: app.authenticate }, async (req: any) => { const u = req.user as AuthUser; const b = z.object({ kind: z.string().default('position'), fen: z.string().optional(), options: z.record(z.any()).default({}), snapshot: z.any().optional() }).parse(req.body); const r = await query<{ id:string }>('insert into analysis_jobs(user_id,kind,payload,status) values($1,$2,$3,\'queued\') returning id', [u.id,b.kind,b]); processAnalysisJob(r.rows[0].id).catch(err => app.log.error({ err }, 'analysis worker failed')); return { id: r.rows[0].id, status: 'queued' }; });
 app.get('/analysis/jobs/:id', { preHandler: app.authenticate }, async (req: any) => { const u = req.user as AuthUser; const r = await query('select id,kind,status,result,error,created_at,updated_at from analysis_jobs where user_id=$1 and id=$2', [u.id,String(req.params.id)]); return r.rows[0] || null; });

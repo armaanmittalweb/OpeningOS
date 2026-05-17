@@ -8,8 +8,8 @@
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json",
-    "migrate:print": "cat migrations/001_init.sql && cat migrations/002_saas_complete.sql",
-    "migrate": "psql \"$DATABASE_URL\" -f migrations/001_init.sql && psql \"$DATABASE_URL\" -f migrations/002_saas_complete.sql"
+    "migrate:print": "cat migrations/001_init.sql && cat migrations/002_saas_complete.sql && cat migrations/003_fix_safe_rls.sql",
+    "migrate": "psql \"$DATABASE_URL\" -f migrations/001_init.sql && psql \"$DATABASE_URL\" -f migrations/002_saas_complete.sql && psql \"$DATABASE_URL\" -f migrations/003_fix_safe_rls.sql"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

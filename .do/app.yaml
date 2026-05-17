@@ -22,42 +22,34 @@ services:
         value: production
         scope: RUN_TIME
         type: GENERAL
-
       - key: PORT
         value: "8787"
         scope: RUN_TIME
         type: GENERAL
-
       - key: DATABASE_URL
         value: ${DATABASE_URL}
         scope: RUN_TIME
         type: SECRET
-
       - key: JWT_SECRET
         value: ${JWT_SECRET}
         scope: RUN_TIME
         type: SECRET
-
       - key: FRONTEND_URL
         value: https://armaanmittalweb.github.io/OpeningOS
         scope: RUN_TIME
         type: GENERAL
-
       - key: CORS_ORIGIN
         value: https://armaanmittalweb.github.io
         scope: RUN_TIME
         type: GENERAL
-
       - key: ADMIN_EMAILS
         value: ${ADMIN_EMAILS}
         scope: RUN_TIME
         type: SECRET
-
       - key: RATE_LIMIT_MAX
         value: "240"
         scope: RUN_TIME
         type: GENERAL
-
       - key: RATE_LIMIT_WINDOW
         value: "1 minute"
         scope: RUN_TIME

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('onboarding, settings, and mobile shell load', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('OpeningOS').first()).toBeVisible();
+  await expect(page.getByText('OpeningOS')).toBeVisible();
   await expect(page.locator('.mobile-tabbar')).toBeAttached();
   await page.goto('/#settings');
   await expect(page.getByText(/SaaS Center|Settings/i)).toBeVisible();
