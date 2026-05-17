@@ -1,0 +1,33 @@
+{
+  "name": "openingos-complete-product-platform",
+  "version": "1.0.0-saas-complete",
+  "private": true,
+  "type": "commonjs",
+  "description": "OpeningOS complete local-first + SaaS-ready chess opening preparation platform with graph-native repertoires, real backend auth/sync/collaboration, engine-analysis hooks, testing, PWA deployment, and production documentation.",
+  "scripts": {
+    "check": "node tests/smoke.test.js",
+    "test": "node tests/smoke.test.js",
+    "lint": "node tools/static_lint.mjs",
+    "build": "node tools/build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "serve": "python3 -m http.server 4173",
+    "dev": "python3 -m http.server 4173",
+    "validate:deploy": "npm test && npm run lint && npm run build",
+    "validate:full": "npm run validate:deploy && npm run typecheck",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps",
+    "backend:dev": "cd server && npm run dev",
+    "backend:build": "cd server && npm run build",
+    "backend:migrate:print": "cd server && npm run migrate:print",
+    "qa:mobile": "node tools/mobile_pwa_qa.mjs",
+    "deploy:local": "python3 -m http.server 4173",
+    "db:migrate": "psql \"$DATABASE_URL\" -f server/migrations/001_init.sql && psql \"$DATABASE_URL\" -f server/migrations/002_saas_complete.sql",
+    "validate:server": "cd server && npm run build",
+    "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.1",
+    "typescript": "^5.5.3",
+    "@types/node": "^20.14.10"
+  }
+}
