@@ -7,7 +7,7 @@
   const CFG_KEY = 'oos.enterprise.api.v1';
   const TOKEN_KEY = 'oos.enterprise.tokens.v1';
   const CLIENT_ID_KEY = 'oos.enterprise.clientId.v1';
-  const DEFAULT_API = (location.origin.includes('localhost') ? 'http://localhost:8787' : '');
+  const DEFAULT_API = (location.origin.includes('localhost') ? 'http://localhost:8787' : ''); // Set via settings in app if not localhost
 
   function json(x, fallback) { try { return JSON.parse(x); } catch (_) { return fallback; } }
   function cfg() { return Object.assign({ baseUrl: DEFAULT_API, autoSync: false, realtime: false }, json(localStorage.getItem(CFG_KEY) || '{}', {})); }
