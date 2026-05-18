@@ -3,7 +3,7 @@
  * Cache-first for static assets (CSS/JS/fonts) once they've been seen.
  * No external API calls are cached.
  */
-const VERSION = 'oos-v15-player-workflow-audit';
+const VERSION = 'oos-v18-world-class-product-core';
 const STATIC_CACHE = 'oos-static-' + VERSION;
 
 const STATIC_ASSETS = [
@@ -60,6 +60,7 @@ const STATIC_ASSETS = [
   './js/product_auth.js',
   './js/product_experience.js',
   './js/player_experience_audit.js',
+  './js/world_class_product_core.js',
   './js/app.js',
 ];
 

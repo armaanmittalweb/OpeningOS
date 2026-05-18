@@ -11,7 +11,6 @@ const root = path.resolve(__dirname, '..');
 const jsDir = path.join(root, 'js');
 const vendorDir = path.join(root, 'vendor');
 
-// Syntax check the shipped browser JavaScript.
 for (const dir of [jsDir, vendorDir]) {
   for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.js')).sort()) {
     childProcess.execFileSync(process.execPath, ['--check', path.join(dir, file)], { stdio: 'pipe' });
@@ -20,73 +19,81 @@ for (const dir of [jsDir, vendorDir]) {
 
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-const app = fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8');
-const productExperience = fs.readFileSync(path.join(jsDir, 'product_experience.js'), 'utf8');
-const playerExperience = fs.readFileSync(path.join(jsDir, 'player_experience_audit.js'), 'utf8');
-const playerUx = fs.readFileSync(path.join(jsDir, 'player_experience_audit.js'), 'utf8');
+const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const worldCore = fs.readFileSync(path.join(jsDir, 'world_class_product_core.js'), 'utf8');
+const productAuth = fs.readFileSync(path.join(jsDir, 'product_auth.js'), 'utf8');
 const api = fs.readFileSync(path.join(jsDir, 'api.js'), 'utf8');
-const saas = fs.readFileSync(path.join(jsDir, 'saas_client.js'), 'utf8');
-const enterprise = fs.readFileSync(path.join(jsDir, 'enterprise_api.js'), 'utf8');
 const views = fs.readFileSync(path.join(jsDir, 'views.js'), 'utf8');
 const serverTs = fs.readFileSync(path.join(root, 'server', 'src', 'server.ts'), 'utf8');
+const importersTs = fs.readFileSync(path.join(root, 'server', 'src', 'importers.ts'), 'utf8');
+const emailTs = fs.readFileSync(path.join(root, 'server', 'src', 'email.ts'), 'utf8');
 
-const playerAudit = fs.readFileSync(path.join(jsDir, 'player_experience_audit.js'), 'utf8');
-assert(index.includes('js/player_experience_audit.js'), 'Player UX audit layer must be loaded');
-for (const required of ['OpeningOS player-experience audit implementation', '.player-board-toolbar', '.player-line-manager', '.player-import-cockpit', '.player-shortcuts-panel', '.player-rep-command-strip', '.current-position-dock']) {
-  assert(playerAudit.includes(required) || styles.includes(required), `Player audit UI/UX layer missing: ${required}`);
+// Core app load order and production assets.
+for (const required of ['vendor/chess.min.js', 'js/product_auth.js', 'js/player_experience_audit.js', 'js/world_class_product_core.js', 'js/app.js']) {
+  assert(index.includes(required), `index.html must load ${required}`);
 }
-for (const required of ['installBoardKeyboardPatch', 'decorateRepertoirePlayer', 'decorateGamesPlayer', 'patchGamePersistence', 'patchImportTelemetry', 'patchCloudImportFallback', 'repairCardsFromGames', 'showShortcuts', 'startRepairSet', 'studyMode']) {
-  assert(playerAudit.includes(required), `Player audit workflow missing: ${required}`);
-}
-assert(fs.existsSync(path.join(root, 'PLAYER_UX_AUDIT_AND_IMPLEMENTATION_2026_05_18.md')), 'Player UX audit implementation report missing');
-assert(fs.existsSync(path.join(root, 'PLAYER_POV_AUDIT_AND_IMPLEMENTATION.md')), 'Player POV audit report missing');
+assert(index.indexOf('js/world_class_product_core.js') > index.indexOf('js/app.js'), 'World-class core should load after app.js so it can enhance rendered pages');
+assert(sw.includes('oos-v18-world-class-product-core'), 'Service worker cache version must be bumped for the world-class core release');
+assert(sw.includes('./js/world_class_product_core.js'), 'Service worker must cache the world-class product core');
+assert(!fs.existsSync(path.join(root, 'Dockerfile')), 'Root Dockerfile must not exist; it can make DigitalOcean deploy the wrong component');
+assert(fs.existsSync(path.join(root, 'Dockerfile.frontend')), 'Frontend Dockerfile should remain renamed as Dockerfile.frontend');
 
-assert(index.includes('vendor/chess.min.js'), 'index.html must load bundled chess.js');
-assert(index.includes('js/saas_client.js') && index.includes('js/enterprise_api.js'), 'Cloud clients must be loaded');
-assert(index.includes('js/product_experience.js'), 'Premium product experience layer must be loaded');
-assert(index.includes('js/player_experience_audit.js'), 'Player POV audit UX layer must be loaded');
-assert(index.includes('https://monkfish-app-yxidj.ondigitalocean.app'), 'CSP must allow deployed DigitalOcean backend');
-assert(!fs.existsSync(path.join(root, 'Dockerfile')), 'Root Dockerfile must not exist; it makes DigitalOcean deploy the frontend Docker image for the API');
-assert(fs.existsSync(path.join(root, 'Dockerfile.frontend')), 'Frontend Dockerfile should be renamed to Dockerfile.frontend');
+// Product-language and UX consolidation.
+for (const required of ['OpeningOS — world-class product core', 'ensureShell', 'wc-sidebar', 'wc-topbar', 'enhanceToday', 'enhanceRepertoire', 'showProductImportWizard', 'practiceRepairSet', 'sanitizeLanguage', 'openKeyboardHelp']) {
+  assert(worldCore.includes(required), `World-class core missing ${required}`);
+}
+for (const required of ['.wc-sidebar', '.wc-topbar', '.wc-command-center', '.wc-enhanced-repertoire', '.wc-position-dock', '.wc-import-cockpit', '.wc-repair-inbox', '.wc-trust-panel']) {
+  assert(styles.includes(required), `World-class CSS missing ${required}`);
+}
+assert(!worldCore.includes('JWT'), 'User-facing world-class core should not expose JWT language');
 
-for (const required of ['OOS_DEFAULT_BACKEND', 'showAccountGateway', 'Create account', 'Continue offline', 'maybeShowAccountNudge']) {
-  assert(app.includes(required), `Account-first app flow missing: ${required}`);
+// Account/product auth should stay user-facing and hide connection details behind advanced controls.
+for (const required of ['Create account', 'Sign in', 'Continue offline', 'Connection settings', 'friendlyError', 'Use at least 10 characters']) {
+  assert(productAuth.includes(required), `Product auth missing ${required}`);
 }
-for (const required of ['DEFAULT_BACKEND_URL', 'backendImportGames', '/imports/jobs', 'lichessUserGames', 'chesscomUserGames']) {
-  assert(api.includes(required), `Importer/backend fallback missing: ${required}`);
+assert(!productAuth.includes('Backend API'), 'Product auth should not show Backend API as user-facing copy');
+
+// Import and review must use cloud first but still support graceful fallback.
+for (const required of ['backendImportGames', '/imports/jobs', 'lichessUserGames', 'chesscomUserGames', 'Trying direct browser import']) {
+  assert(api.includes(required), `Import API missing ${required}`);
 }
-assert((saas.includes('DEFAULT_BACKEND_URL') || saas.includes('DEFAULT_BACKEND')) && fs.readFileSync(path.join(jsDir, 'deployment_config.js'), 'utf8').includes('monkfish-app-yxidj'), 'SaaS client should default to deployed backend through deployment_config.js');
-assert(enterprise.includes('OOSDeployment') && fs.readFileSync(path.join(jsDir, 'deployment_config.js'), 'utf8').includes('monkfish-app-yxidj'), 'Enterprise API client should default to deployed backend through deployment_config.js');
-assert((views.includes('cloud import first') || productExperience.includes('cloud import')), 'Import wizard should explain cloud/browser import flow');
-for (const required of ['/auth/signup', '/auth/login', '/imports/jobs', '/imports/fetch-games', 'fetchRemoteGames', 'fetchChesscomGames', 'fetchLichessGames', '/sync/snapshot', '/graph/snapshot']) {
-  assert(serverTs.includes(required), `Backend route/import feature missing: ${required}`);
+for (const required of ['Fetching games', 'Parsing games', 'Matching repertoire', 'Finding repair moments', 'duplicates skipped']) {
+  assert(worldCore.includes(required), `Import cockpit missing ${required}`);
 }
-for (const required of ['OpeningOS beta product experience redesign', '.app-sidebar', '.sync-trust-pill', '.premium-repertoire-head', '.today-command-center']) {
-  assert(styles.includes(required), `Product UI hardening CSS missing: ${required}`);
-}
-for (const required of ['OpeningOS player-experience audit implementation', '.player-board-toolbar', '.player-line-manager', '.player-import-cockpit', '.player-shortcuts-panel']) {
-  assert(styles.includes(required), `Player audit UI CSS missing: ${required}`);
+for (const required of ['normalizeChesscomGame', 'normalizeLichessGame', 'pgnInJson=true', 'summary', 'rate-limiting']) {
+  assert(importersTs.includes(required), `Backend import normalization missing ${required}`);
 }
 
-
-for (const required of ['showImportWizard', 'decorateRepertoire', 'decorateToday', 'pushCloudSync', 'Position actions', 'Practice repair set']) {
-  assert(productExperience.includes(required), `Product experience layer missing: ${required}`);
+// Repertoire editor and game repair capabilities.
+for (const required of ['insertMoveAt', 'removeMoveAt', 'addSideVariation', 'addOpponentReplyFromPosition', 'splitLineFromPly', 'setLineRetired', 'markPositionCritical', 'setIdeaCard']) {
+  assert(fs.readFileSync(path.join(jsDir, 'data.js'), 'utf8').includes(required), `Data model/editor missing ${required}`);
 }
-assert(fs.existsSync(path.join(root, '.gitattributes')), 'Repository line-ending hygiene file missing');
+for (const required of ['Position tools', 'Insert here', 'Add reply branch', 'Create side variation', 'Split from here', 'Retire line', 'Edit idea card fields']) {
+  assert(views.includes(required), `Repertoire workspace missing ${required}`);
+}
 
-assert(fs.existsSync(path.join(root, '.github', 'workflows', 'ci.yml')), 'CI workflow missing');
-assert(fs.existsSync(path.join(root, '.github', 'workflows', 'deploy-pages.yml')), 'Pages workflow missing');
-assert(fs.existsSync(path.join(root, '.github', 'workflows', 'deploy-backend-do.yml')), 'DigitalOcean backend workflow missing');
-assert(!fs.existsSync(path.join(root, '.github', 'workflows', 'pages.yml')), 'Duplicate pages.yml workflow should be removed');
-assert(fs.existsSync(path.join(root, '.do', 'app.yaml')), 'DigitalOcean app spec missing');
+// Backend should expose production route surfaces and real email adapter.
+for (const required of ['/health/db', '/auth/signup', '/auth/login', '/imports/jobs', '/imports/fetch-games', '/sync/snapshot', '/graph/snapshot', '/shares', '/coach/invitations']) {
+  assert(serverTs.includes(required), `Backend route missing ${required}`);
+}
+assert(emailTs.includes('nodemailer.createTransport'), 'Email adapter should send through SMTP when configured');
+assert(serverTs.includes('IMPORT_RATE_LIMIT_MAX'), 'Import endpoints should be rate limited');
+
+// Repository/deployment hygiene.
+for (const f of ['.gitattributes', '.github/workflows/ci.yml', '.github/workflows/e2e.yml', '.github/workflows/deploy-pages.yml', '.github/workflows/deploy-backend-do.yml', '.do/app.yaml']) {
+  assert(fs.existsSync(path.join(root, f)), `${f} missing`);
+}
+const ciWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
+const e2eWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'e2e.yml'), 'utf8');
+const pwConfig = fs.readFileSync(path.join(root, 'playwright.config.ts'), 'utf8');
+assert(!ciWorkflow.includes('Playwright E2E product flows'), 'Push CI should remain fast; full E2E belongs in manual/PR workflow');
+assert(e2eWorkflow.includes('workflow_dispatch') && e2eWorkflow.includes('pull_request'), 'E2E workflow should be manual and PR-based');
+assert(e2eWorkflow.includes('playwright install chromium'), 'E2E workflow should install Chromium only by default');
+assert(pwConfig.includes("process.env.CI\n    ? [{ name: 'chromium-desktop'"), 'Playwright CI should run Chromium-only by default');
 const doSpec = fs.readFileSync(path.join(root, '.do', 'app.yaml'), 'utf8');
-for (const required of ['source_dir: server', 'build_command: npm install && npm run build', 'run_command: npm run start', 'http_port: 8787']) {
-  assert(doSpec.includes(required), `DigitalOcean app spec missing: ${required}`);
+for (const required of ['source_dir: server', 'build_command: npm install && npm run build', 'run_command: npm run start', 'http_port: 8787', 'PGSSLMODE', 'DATABASE_SSL_REJECT_UNAUTHORIZED']) {
+  assert(doSpec.includes(required), `DigitalOcean app spec missing ${required}`);
 }
-
-assert(fs.existsSync(path.join(root, 'server', 'migrations', '003_fix_safe_rls.sql')), 'Safe RLS migration fix missing');
-assert(fs.existsSync(path.join(root, 'PRODUCT_FIX_REPORT_2026_05_17.md')), 'Product fix report missing');
-assert(serverTs.includes('IMPORT_RATE_LIMIT_MAX'), 'Import endpoints should have stricter rate limits');
 
 // Runtime smoke: local repertoire + practice still works.
 function createStorage() {

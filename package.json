@@ -1,9 +1,9 @@
 {
   "name": "openingos-complete-product-platform",
-  "version": "1.0.0-saas-complete",
+  "version": "1.0.0-world-class-beta-core",
   "private": true,
   "type": "commonjs",
-  "description": "OpeningOS complete local-first + SaaS-ready chess opening preparation platform with graph-native repertoires, real backend auth/sync/collaboration, engine-analysis hooks, testing, PWA deployment, and production documentation.",
+  "description": "OpeningOS world-class beta core: premium chess opening workspace with real accounts, sync trust, repertoire workflow, imports, game repair and deployable SaaS backend.",
   "scripts": {
     "check": "node tests/smoke.test.js",
     "test": "node tests/smoke.test.js",
@@ -24,7 +24,8 @@
     "db:migrate": "psql \"$DATABASE_URL\" -f server/migrations/001_init.sql && psql \"$DATABASE_URL\" -f server/migrations/002_saas_complete.sql && psql \"$DATABASE_URL\" -f server/migrations/003_fix_safe_rls.sql",
     "validate:server": "cd server && npm run build",
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
-    "test:e2e:ci": "playwright install --with-deps && playwright test"
+    "test:e2e:ci": "playwright install chromium --with-deps && playwright test --project=chromium-desktop",
+    "audit:product": "npm run validate:full && npm run typecheck:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.1",

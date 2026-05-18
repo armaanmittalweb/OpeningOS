@@ -6,6 +6,7 @@ import { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } from
 import { spawn } from 'node:child_process';
 import { z } from 'zod';
 import { query, withUser, transaction } from './db.js';
+import { sendEmail } from './email.js';
 
 const app = Fastify({ logger: true, trustProxy: true, bodyLimit: 25 * 1024 * 1024 });
 const PORT = Number(process.env.PORT || 8787);
@@ -60,8 +61,9 @@ async function audit(userId: string | null, action: string, details: Record<stri
   await query('insert into audit_events(user_id, action, details, ip, user_agent) values($1,$2,$3,$4,$5)', [userId, action, details, req?.ip || null, req?.headers?.['user-agent'] || null]).catch(err => app.log.warn({ err }, 'audit failed'));
 }
 async function mail(to: string, subject: string, body: string) {
-  await query('insert into email_events(to_email, subject, body, status) values($1,$2,$3,$4)', [to, subject, body, process.env.SMTP_URL ? 'queued' : 'dev-queued']);
-  app.log.info({ to, subject, preview: body.slice(0, 160) }, 'email queued');
+  const result = await sendEmail({ to, subject, text: body, template: 'system-email', payload: { source: 'server-mail-helper' } });
+  await query('insert into email_events(to_email, subject, body, status) values($1,$2,$3,$4)', [to, subject, body, result.sent ? 'sent' : 'queued']).catch(err => app.log.warn({ err }, 'email event insert failed'));
+  app.log.info({ to, subject, sent: result.sent, queued: result.queued, preview: body.slice(0, 160) }, 'email processed');
 }
 function publicUrl(path: string) { return `${FRONTEND_URL}${path}`; }
 

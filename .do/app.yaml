@@ -79,3 +79,8 @@ services:
         value: "OpeningOS <no-reply@openingos.app>"
         scope: RUN_TIME
         type: GENERAL
+
+      - key: CHESSCOM_USER_AGENT
+        value: "OpeningOS/1.0 (student beta; contact: support@openingos.app)"
+        scope: RUN_TIME
+        type: GENERAL
