@@ -651,6 +651,10 @@
   }
 
   function promptAccountOrLocal(onDone, opts = {}) {
+    if (global.OOSAuthBridge && global.OOSAuthBridge.show) {
+      global.OOSAuthBridge.show({ onDone });
+      return;
+    }
     const API = global.OOSEnterpriseAPI;
     const forceAccount = !!opts.forceAccount;
     const wrap = document.createElement('div');
@@ -670,7 +674,7 @@
           Use a real account for cloud sync, coach workspaces, hosted sharing, and server-side Lichess/Chess.com imports. Local-only mode is still available for private offline testing.
         </p>
         <div class="auth-grid">
-          <label class="field"><span>Backend API</span><input class="input" id="authBackend" type="url" value="${escapeHtml(backend)}" autocomplete="url" /></label>
+          <label class="field"><span>Cloud server</span><input class="input" id="authBackend" type="url" value="${escapeHtml(backend)}" autocomplete="url" /></label>
           <label class="field"><span>Name</span><input class="input" id="authName" placeholder="Your name" autocomplete="name" /></label>
           <label class="field"><span>Email</span><input class="input" id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" /></label>
           <label class="field"><span>Password</span><input class="input" id="authPassword" type="password" placeholder="At least 10 characters" autocomplete="current-password" /></label>
@@ -700,7 +704,7 @@
       const email = emailInput.value.trim();
       const password = passInput.value;
       const name = nameInput.value.trim();
-      if (!baseUrl) throw new Error('Backend URL is required.');
+      if (!baseUrl) throw new Error('Cloud server URL is required.');
       if (!email || !password) throw new Error('Email and password are required.');
       setStatus(kind === 'signup' ? 'Creating account…' : 'Signing in…');
       let result;
@@ -754,6 +758,10 @@
   }
 
   function showAccountGateway(onDone, opts = {}) {
+    if (global.OOSAuthBridge && global.OOSAuthBridge.show) {
+      global.OOSAuthBridge.show({ onDone });
+      return;
+    }
     const API = saasApi();
     if (!API) return promptCreateFirstProfile(onDone);
     const wrap = document.createElement('div');
@@ -771,7 +779,7 @@
           </div>
         </div>
         <div class="account-grid">
-          <label class="field"><span>Backend API</span><input class="input" id="acctBackend" type="url" value="${escapeHtml(defaultBackendUrl())}" /></label>
+          <label class="field"><span>Cloud server</span><input class="input" id="acctBackend" type="url" value="${escapeHtml(defaultBackendUrl())}" /></label>
           <label class="field"><span>Email</span><input class="input" id="acctEmail" type="email" autocomplete="email" placeholder="you@example.com" value="${escapeHtml((signed.user && signed.user.email) || '')}" /></label>
           <label class="field"><span>Password</span><input class="input" id="acctPassword" type="password" autocomplete="current-password" placeholder="At least 10 characters" /></label>
           <label class="field"><span>Display name</span><input class="input" id="acctName" type="text" autocomplete="name" placeholder="Your name" value="${escapeHtml((global.OOSProfiles.active() || {}).name || '')}" /></label>

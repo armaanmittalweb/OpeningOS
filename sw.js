@@ -3,7 +3,7 @@
  * Cache-first for static assets (CSS/JS/fonts) once they've been seen.
  * No external API calls are cached.
  */
-const VERSION = 'oos-v12-account-import-ui-quality';
+const VERSION = 'oos-v13-real-product-auth-import-ui';
 const STATIC_CACHE = 'oos-static-' + VERSION;
 
 const STATIC_ASSETS = [

@@ -3836,7 +3836,7 @@
           el('span', { class: 'muted', style: { fontSize: '12px' } }, ['games']),
         ]));
         panel.appendChild(el('div', { class: 'muted', style: { fontSize: '12px', marginTop: '8px' } }, [
-          'Public profiles only. Signed-in accounts use your OpeningOS backend securely fetches games for reliability; offline users fall back to public browser APIs.',
+          'Public profiles only. Signed-in accounts use your OpeningOS backend securely fetches games in the background for reliability; offline users fall back to public browser APIs.',
         ]));
         const fetchBtn = el('button', { class: 'btn btn-primary', on: { click: async () => {
           const u = username.value.trim();
@@ -3881,7 +3881,7 @@
           const serverGames = await global.OOSAccountGateway.importGames(sourceKind, username, maxGames);
           if (serverGames && serverGames.length) return serverGames;
         } catch (err) {
-          global.OOSApp.toast('Server import failed, trying browser fallback: ' + (err.message || err), 'warn');
+          global.OOSApp.toast('OpeningOS Cloud import failed, trying browser fallback: ' + (err.message || err), 'warn');
         }
       }
       return sourceKind === 'lichess'

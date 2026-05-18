@@ -10,6 +10,18 @@
 
   function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
   function json(x, fallback) { try { return JSON.parse(x); } catch (_) { return fallback; } }
+  function friendlyError(message) {
+    const raw = String(message && message.message || message || 'Import failed.');
+    try {
+      const parsed = JSON.parse(raw);
+      const issue = Array.isArray(parsed) ? parsed[0] : parsed.issues && parsed.issues[0];
+      if (issue && Array.isArray(issue.path) && issue.path.join('.').includes('password')) return 'Use at least 10 characters for your password.';
+    } catch (_) {}
+    if (/self[- ]signed certificate|certificate chain/i.test(raw)) return 'OpeningOS Cloud is connected, but the backend database TLS setting needs the latest server patch. Redeploy the backend and try again.';
+    if (/failed to fetch|networkerror/i.test(raw)) return 'Could not reach the game service. Try again or sign in to use OpeningOS Cloud imports.';
+    if (/sign in required|401/i.test(raw)) return 'Sign in to OpeningOS Cloud to import games reliably.';
+    return raw.replace(/^Error:\s*/i, '');
+  }
 
   function backendConfig() {
     const out = { baseUrl: '', token: '' };
@@ -43,7 +55,7 @@
     const res = await fetch(cfg.baseUrl + path, Object.assign({}, opts || {}, { headers }));
     const text = await res.text();
     const body = text ? json(text, { text }) : {};
-    if (!res.ok) throw new Error(body.error || body.message || body.text || res.statusText || ('HTTP ' + res.status));
+    if (!res.ok) throw new Error(friendlyError(body.error || body.message || body.text || res.statusText || ('HTTP ' + res.status)));
     return body;
   }
 
@@ -60,15 +72,16 @@
     for (let i = 0; i < 30; i++) {
       await sleep(i < 4 ? 700 : 1200);
       last = await requestBackend('/imports/jobs/' + encodeURIComponent(id));
-      if (last && last.status === 'done') {
+      if (last && ['done','complete','completed'].includes(String(last.status || '').toLowerCase())) {
         const result = last.result || {};
         if (Array.isArray(result.games)) return result.games.filter(g => g && g.pgn);
         if (Array.isArray(result.pgns)) return result.pgns.map(pgn => ({ pgn, headers: { Site: source } }));
         if (result.ndjson) return parseLichessNdjson(result.ndjson);
+        if (result.raw && result.format === 'ndjson') return parseLichessNdjson(result.raw);
         if (result.pgn) return splitPgnBundle(result.pgn);
-        throw new Error('Import finished but returned no parseable games.');
+        throw new Error('Import finished but returned no games we could read. Check the username or try a smaller game count.');
       }
-      if (last && last.status === 'failed') throw new Error(last.error || 'Backend import failed.');
+      if (last && last.status === 'failed') throw new Error(friendlyError(last.error || 'OpeningOS Cloud import failed.'));
     }
     throw new Error('Backend import is still running. Try again in a moment.');
   }
@@ -78,7 +91,7 @@
     const cfg = backendConfig();
     if (cfg.token) {
       try { return await backendImportGames('lichess', username, max); }
-      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast('Server Lichess import failed; trying browser import.', 'warn'); }
+      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast(friendlyError(backendErr) + ' Trying browser import.', 'warn'); }
     }
     try {
       const url = `https://lichess.org/api/games/user/${encodeURIComponent(username)}?max=${max}&moves=true&tags=true&clocks=false&evals=false`;
@@ -99,7 +112,7 @@
     const cfg = backendConfig();
     if (cfg.token) {
       try { return await backendImportGames('chesscom', username, max); }
-      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast('Server Chess.com import failed; trying browser import.', 'warn'); }
+      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast(friendlyError(backendErr) + ' Trying browser import.', 'warn'); }
     }
     try {
       const games = await chesscomDirect(username, max);

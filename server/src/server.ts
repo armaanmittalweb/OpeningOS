@@ -70,10 +70,15 @@ app.get('/health', async () => ({ ok: true, service: 'openingos-backend', mode: 
 // --- Auth, account recovery, OAuth and passkeys ------------------------
 app.post('/auth/signup', async (req, reply) => {
   const body = SignupSchema.parse(req.body);
+  const existing = await query<{ id: string }>('select id from app_users where email=$1', [body.email]);
+  if (existing.rows[0]) {
+    await audit(existing.rows[0].id, 'auth.signup.email_exists', { email: body.email }, req);
+    return reply.code(409).send({ error: 'An account already exists for this email. Use Sign in instead.', code: 'email_exists' });
+  }
   const user = await transaction(async client => {
-    const u = await client.query<{ id: string; email: string; role: string }>(`insert into app_users(email, display_name, role) values($1,$2,'user') on conflict(email) do update set updated_at=now() returning id,email,role`, [body.email, body.displayName || body.name || body.email.split('@')[0]]);
-    await client.query(`insert into user_passwords(user_id,password_hash) values($1,$2) on conflict(user_id) do update set password_hash=excluded.password_hash, updated_at=now()`, [u.rows[0].id, hashPassword(body.password)]);
-    await client.query(`insert into profiles(user_id,name,role) values($1,$2,'player') on conflict do nothing`, [u.rows[0].id, body.displayName || body.name || 'Player']);
+    const u = await client.query<{ id: string; email: string; role: string }>(`insert into app_users(email, display_name, role) values($1,$2,'user') returning id,email,role`, [body.email, body.displayName || body.name || body.email.split('@')[0]]);
+    await client.query(`insert into user_passwords(user_id,password_hash) values($1,$2)`, [u.rows[0].id, hashPassword(body.password)]);
+    await client.query(`insert into profiles(user_id,name,role) values($1,$2,'player')`, [u.rows[0].id, body.displayName || body.name || 'Player']);
     return u.rows[0];
   });
   await audit(user.id, 'auth.signup', { email: user.email }, req);
@@ -363,5 +368,27 @@ app.get('/admin/dashboard', { preHandler: app.requireAdmin }, async () => { cons
 app.get('/admin/overview', { preHandler: app.requireAdmin }, async () => app.inject({ method: 'GET', url: '/admin/dashboard' }).then(r => JSON.parse(r.body)));
 app.post('/audit', { preHandler: app.authenticate }, async (req: any) => { const u = req.user as AuthUser; const b = z.object({ action: z.string().min(1), details: z.record(z.any()).default({}) }).parse(req.body); await audit(u.id,b.action,b.details,req); return { ok: true }; });
 
-app.setErrorHandler((err, req, reply) => { app.log.error({ err }, 'request failed'); reply.status((err as any).statusCode || 400).send({ error: err.message || 'Request failed' }); });
+
+function friendlyServerError(err: any) {
+  if (err && err.issues && Array.isArray(err.issues)) {
+    const first = err.issues[0] || {};
+    const path = Array.isArray(first.path) ? first.path.join('.') : '';
+    if (path.includes('password') && first.code === 'too_small') return { error: 'Use at least 10 characters for your password.', code: 'validation_error', field: 'password' };
+    if (path.includes('email')) return { error: 'Enter a valid email address.', code: 'validation_error', field: 'email' };
+    return { error: first.message || 'Please check the form and try again.', code: 'validation_error', issues: err.issues };
+  }
+  const message = String(err?.message || err || 'Request failed');
+  if (/self[- ]signed certificate|certificate chain|UNABLE_TO_VERIFY/i.test(message)) {
+    return { error: 'Database TLS verification failed. The server is configured to use DigitalOcean Postgres SSL; redeploy with the latest database TLS patch.', code: 'database_tls_error' };
+  }
+  if (/duplicate key|unique constraint/i.test(message)) return { error: 'This item already exists.', code: 'conflict' };
+  return { error: message || 'Request failed', code: err?.code || 'request_failed' };
+}
+
+app.setErrorHandler((err, req, reply) => {
+  app.log.error({ err }, 'request failed');
+  const body = friendlyServerError(err);
+  const status = (err as any).statusCode || (body.code === 'validation_error' ? 400 : body.code === 'conflict' ? 409 : 400);
+  reply.status(status).send(body);
+});
 app.listen({ port: PORT, host: '0.0.0.0' });

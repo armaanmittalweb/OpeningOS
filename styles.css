@@ -4043,3 +4043,144 @@ body[data-view="repertoire"] #app { max-width: var(--content-max); }
   .account-actions .btn { flex-basis: 100%; }
   .product-auth-card, .account-card, .auth-panel { gap: 12px; }
 }
+
+/* --------------------------------------------------------------------------
+   OpeningOS product-quality correction pass — 2026-05-18
+   Purpose: hide deployment plumbing from users, make auth feel like a real
+   product, and harden layouts against overlap on repertoire/import screens.
+---------------------------------------------------------------------------- */
+.product-login-modal {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: clamp(14px, 3vw, 34px) !important;
+}
+.product-auth-backdrop,
+.product-login-modal .modal-back {
+  background:
+    radial-gradient(circle at 14% 8%, color-mix(in oklab, var(--accent) 28%, transparent), transparent 34%),
+    radial-gradient(circle at 85% 18%, rgba(110, 168, 254, .18), transparent 32%),
+    rgba(4, 7, 9, .78) !important;
+  backdrop-filter: blur(18px) saturate(130%);
+}
+.product-login-shell {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(320px, .95fr) minmax(360px, 520px);
+  gap: clamp(18px, 3vw, 34px);
+  width: min(1120px, calc(100vw - 28px));
+  max-height: min(92vh, 850px);
+  overflow: auto;
+  border: 1px solid color-mix(in oklab, var(--line) 78%, transparent);
+  border-radius: 32px;
+  background: linear-gradient(145deg, color-mix(in oklab, var(--bg-0) 94%, transparent), color-mix(in oklab, var(--bg-1) 96%, transparent));
+  box-shadow: 0 34px 110px rgba(0,0,0,.44);
+  padding: clamp(18px, 3vw, 34px);
+}
+.product-login-story,
+.product-login-card {
+  min-width: 0;
+}
+.product-login-story {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(8px, 2vw, 22px);
+}
+.product-logo-row { display: flex; align-items: center; gap: 14px; margin-bottom: 26px; }
+.product-logo { width: 56px; height: 56px; border-radius: 20px; display: grid; place-items: center; font-size: 30px; color: #06110b; background: linear-gradient(135deg, var(--accent), #d8f0df); box-shadow: 0 18px 44px color-mix(in oklab, var(--accent) 22%, transparent); }
+.product-logo-row strong { display: block; font-size: 18px; color: var(--text-0); }
+.product-logo-row span { display: block; font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.product-login-story h1 { max-width: 680px; margin: 0; font-size: clamp(34px, 5.8vw, 68px); line-height: .94; letter-spacing: -.06em; color: var(--text-0); }
+.product-login-story .lead { max-width: 640px; margin: 20px 0 0; color: var(--text-1); font-size: clamp(15px, 1.5vw, 18px); line-height: 1.65; }
+.product-benefits { display: grid; gap: 12px; margin-top: 28px; }
+.product-benefit { display: grid; grid-template-columns: 28px 1fr; gap: 11px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 18px; background: color-mix(in oklab, var(--bg-1) 78%, transparent); }
+.product-benefit > span { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 900; }
+.product-benefit strong { color: var(--text-0); }
+.product-benefit p { margin: 4px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.45; }
+.product-login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-self: center;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: color-mix(in oklab, var(--bg-1) 96%, transparent);
+  box-shadow: var(--shadow-1);
+  padding: clamp(18px, 2.6vw, 30px);
+}
+.product-login-card h2 { margin: 4px 0 0; font-size: clamp(24px, 3.2vw, 34px); letter-spacing: -.035em; color: var(--text-0); }
+.product-login-card .muted { line-height: 1.55; }
+.product-tabs { display: grid !important; grid-template-columns: 1fr 1fr !important; width: 100%; margin: 0 0 4px !important; border-radius: 18px !important; }
+.product-tabs button { min-height: 44px; }
+.product-field { display: grid; gap: 7px; margin: 0; }
+.product-field span { color: var(--text-2); font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.product-field .input { min-height: 48px; font-size: 15px; }
+.password-hint { margin: -4px 0 0; color: var(--text-3); font-size: 12.5px; line-height: 1.45; }
+.product-auth-message { min-height: 22px; padding: 2px 0; color: var(--text-2); font-size: 13px; line-height: 1.45; }
+.product-auth-message.bad { color: var(--bad); }
+.product-auth-message.good { color: var(--good); }
+.product-actions { justify-content: stretch !important; }
+.product-actions .btn { min-height: 46px; }
+.product-actions .auth-submit { width: 100%; flex: 1 1 100%; }
+.product-secondary-actions { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.link-button { border: 0; background: transparent; padding: 0; color: var(--accent); font-weight: 700; cursor: pointer; }
+.link-button:hover { text-decoration: underline; }
+.muted-link { color: var(--text-2); font-weight: 600; }
+.connection-details { margin-top: 4px; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; background: var(--bg-0); }
+.connection-details summary { cursor: pointer; color: var(--text-2); font-size: 12.5px; font-weight: 800; }
+.connection-details[open] { padding: 12px; }
+.connection-details .field { margin-top: 10px; }
+.account-pill { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topnav { min-width: 0; }
+.topnav-left, .topnav-right { min-width: 0; }
+.primary-nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.primary-nav::-webkit-scrollbar { display: none; }
+.cmd-trigger { min-width: 0; }
+#app { width: 100%; max-width: 1480px; margin-inline: auto; overflow-x: hidden; }
+.panel, .card, .today-card, .game-card, .lib-card, .setting-row, .rep-main, .move-tree, .line-header, .editor-grid { min-width: 0; }
+.rep-layout {
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(280px, 340px) !important;
+  align-items: start;
+}
+.rep-main { min-width: 0; overflow: hidden; }
+.line-header { flex-wrap: wrap; align-items: flex-start; }
+.line-header > * { min-width: 0; }
+.line-header h2, .line-header .subtitle { overflow-wrap: anywhere; }
+.line-tags, .line-actions, .board-actions, .fb-actions, .import-actions { flex-wrap: wrap; }
+.editor-grid { grid-template-columns: minmax(300px, 1.05fr) minmax(280px, .95fr) !important; }
+.board-card, .board-wrap, .board-shell, .practice-board, .chess-board { max-width: 100%; min-width: 0; }
+.chess-board { width: min(var(--board-size, 560px), 100%) !important; }
+.move-tree .moves, .line-surgery, .idea-card, .notes-card { overflow-wrap: anywhere; }
+.move-tree { overflow: hidden; }
+.move-tree .moves { overflow: auto; }
+.import-wizard, .modal-panel { max-width: min(920px, calc(100vw - 24px)); }
+.warn-banner, .auth-status, .product-auth-message { overflow-wrap: anywhere; }
+@media (max-width: 1180px) {
+  .rep-layout { grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) !important; }
+  .rep-layout .rep-aside { display: block !important; grid-column: 1 / -1; position: static; max-height: none; }
+}
+@media (max-width: 920px) {
+  .product-login-shell { grid-template-columns: 1fr; width: min(680px, calc(100vw - 22px)); max-height: 94vh; border-radius: 24px; padding: 16px; }
+  .product-login-story { padding: 8px 4px; }
+  .product-login-story h1 { font-size: clamp(30px, 10vw, 48px); }
+  .product-benefits { display: none; }
+  .product-login-card { border-radius: 22px; padding: 18px; }
+  .rep-layout { grid-template-columns: 1fr !important; }
+  .rep-layout .rep-folders { display: none !important; }
+  .editor-grid { grid-template-columns: 1fr !important; }
+  .topnav-right { gap: 6px; }
+  .cmd-trigger span, .cmd-trigger kbd { display: none; }
+}
+@media (max-width: 640px) {
+  .product-login-modal { align-items: flex-end !important; padding: 0 !important; }
+  .product-login-shell { width: 100%; max-height: 96vh; border-radius: 24px 24px 0 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); }
+  .product-logo-row { margin-bottom: 14px; }
+  .product-login-story .lead { font-size: 14px; margin-top: 12px; }
+  .product-secondary-actions { display: grid; gap: 10px; }
+  .mobile-tabbar { z-index: 60; }
+  #app { padding-inline: 12px; }
+  .line-header { display: grid; gap: 12px; }
+  .line-header .row, .line-header .line-tags { justify-content: flex-start !important; }
+  .btn { white-space: normal; }
+}

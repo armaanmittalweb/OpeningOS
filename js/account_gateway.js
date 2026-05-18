@@ -93,6 +93,9 @@
 
   function showAuthGate(opts) {
     opts = opts || {};
+    if (global.OOSAuthBridge && global.OOSAuthBridge.show) {
+      return global.OOSAuthBridge.show({ onDone: opts.onDone || (() => { if (global.OOSApp && global.OOSApp.go) global.OOSApp.go(document.body.dataset.view || 'today'); }) });
+    }
     const wrap = h('div', { class: 'modal account-modal' });
     const back = h('div', { class: 'modal-back' });
     const panel = h('div', { class: 'modal-panel account-card', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'OpeningOS account' });
@@ -131,7 +134,7 @@
         return;
       }
 
-      const backendField = input('Backend API URL', 'url', backend, 'url');
+      const backendField = input('Cloud server URL', 'url', backend, 'url');
       const nameField = input('Display name', 'text', '', 'name');
       const emailField = input('Email', 'email', '', 'email');
       const passField = input('Password', 'password', '', mode === 'login' ? 'current-password' : 'new-password');
@@ -152,7 +155,7 @@
           const password = passField.querySelector('input').value;
           const name = mode === 'signup' ? nameField.querySelector('input').value.trim() : '';
           const url = backendField.querySelector('input').value.trim();
-          if (!url) { status.textContent = 'Backend API URL is required.'; return; }
+          if (!url) { status.textContent = 'Cloud server URL is required.'; return; }
           if (!email || !password) { status.textContent = 'Email and password are required.'; return; }
           busy = true; status.textContent = mode === 'login' ? 'Signing in…' : 'Creating account…';
           try {
@@ -250,7 +253,8 @@
     const user = currentUser();
     if (signedIn() && user) {
       pill.classList.add('is-online');
-      pill.textContent = 'Cloud: ' + (user.email || 'signed in');
+      pill.textContent = 'Cloud sync';
+      pill.title = user.email || 'Signed in to OpeningOS Cloud';
     } else {
       pill.classList.remove('is-online');
       pill.textContent = 'Sign in';
