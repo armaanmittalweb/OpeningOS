@@ -66,3 +66,16 @@ services:
         value: "1 minute"
         scope: RUN_TIME
         type: GENERAL
+
+      - key: IMPORT_RATE_LIMIT_MAX
+        value: "18"
+        scope: RUN_TIME
+        type: GENERAL
+      - key: IMPORT_RATE_LIMIT_WINDOW
+        value: "15 minutes"
+        scope: RUN_TIME
+        type: GENERAL
+      - key: SMTP_FROM
+        value: "OpeningOS <no-reply@openingos.app>"
+        scope: RUN_TIME
+        type: GENERAL

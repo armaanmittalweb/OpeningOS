@@ -21,7 +21,7 @@
   function activeProfileId() { return (global.OOSProfiles && global.OOSProfiles.activeId && global.OOSProfiles.activeId()) || 'default'; }
 
   async function request(path, options) {
-    const c = cfg(); if (!c.baseUrl) throw new Error('Backend URL is not configured.');
+    const c = cfg(); if (!c.baseUrl) throw new Error('OpeningOS Cloud is not connected.');
     const t = tokens();
     const opts = Object.assign({ method: 'GET', headers: {} }, options || {});
     opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});

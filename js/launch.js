@@ -337,7 +337,7 @@
     ]));
 
     m.panel.appendChild(h('div', { class: 'muted', style: { marginTop: '12px', fontSize: '12px' } }, [
-      'This build is local-first: user data is saved in the browser profile. For commercial SaaS reliability, connect the backend plan in BACKEND_MIGRATION.md.'
+      'This build saves work locally and can sync with OpeningOS Cloud when signed in.'
     ]));
   }
 

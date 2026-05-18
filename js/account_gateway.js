@@ -1,7 +1,7 @@
 /* OpeningOS — account gateway
  * Product-facing auth/sync/import layer. This turns the app from an invisible
  * local-profile tool into an explicit cloud account product while preserving a
- * local-only fallback for private/offline study.
+ * offline fallback for private/offline study.
  */
 (function (global) {
   'use strict';
@@ -67,7 +67,7 @@
       ensureProfileForAccount(out.user, name, 'player');
       return out;
     }
-    const a = api(); if (!a || !a.signUp) throw new Error('SaaS client is not loaded.');
+    const a = api(); if (!a || !a.signUp) throw new Error('Cloud client is not loaded.');
     saveBackend(backendUrl);
     const out = await a.signUp({ email, password, name });
     ensureProfileForAccount(out.user, name, 'player');
@@ -79,7 +79,7 @@
       ensureProfileForAccount(out.user, email, 'player');
       return out;
     }
-    const a = api(); if (!a || !a.signIn) throw new Error('SaaS client is not loaded.');
+    const a = api(); if (!a || !a.signIn) throw new Error('Cloud client is not loaded.');
     saveBackend(backendUrl);
     const out = await a.signIn({ email, password });
     ensureProfileForAccount(out.user, email, 'player');
@@ -124,7 +124,7 @@
       if (mode === 'status' && user) {
         panel.appendChild(h('div', { class: 'account-status-card' }, [
           h('strong', { text: user.email || 'Signed in' }),
-          h('span', { class: 'muted', text: 'Backend: ' + backend })
+          h('span', { class: 'muted', text: 'Cloud sync connected' })
         ]));
         panel.appendChild(h('div', { class: 'account-actions' }, [
           h('button', { class: 'btn', on: { click: () => syncNow(panel) } }, ['Sync now']),
@@ -134,7 +134,7 @@
         return;
       }
 
-      const backendField = input('Cloud server URL', 'url', backend, 'url');
+      const backendField = input('Connection URL', 'url', backend, 'url');
       const nameField = input('Display name', 'text', '', 'name');
       const emailField = input('Email', 'email', '', 'email');
       const passField = input('Password', 'password', '', mode === 'login' ? 'current-password' : 'new-password');
@@ -144,7 +144,7 @@
         emailField,
         passField
       ]));
-      const status = h('div', { class: 'auth-status muted', text: 'Your backend is already filled in from the deployment config.' });
+      const status = h('div', { class: 'auth-status muted', text: 'Your sync connection is already configured.' });
       panel.appendChild(status);
       panel.appendChild(h('div', { class: 'account-actions' }, [
         h('button', { class: 'btn', on: { click: () => { mode = mode === 'login' ? 'signup' : 'login'; render(); } } }, [mode === 'login' ? 'Create account instead' : 'I already have an account']),
@@ -155,7 +155,7 @@
           const password = passField.querySelector('input').value;
           const name = mode === 'signup' ? nameField.querySelector('input').value.trim() : '';
           const url = backendField.querySelector('input').value.trim();
-          if (!url) { status.textContent = 'Cloud server URL is required.'; return; }
+          if (!url) { status.textContent = 'Connection URL is required.'; return; }
           if (!email || !password) { status.textContent = 'Email and password are required.'; return; }
           busy = true; status.textContent = mode === 'login' ? 'Signing in…' : 'Creating account…';
           try {

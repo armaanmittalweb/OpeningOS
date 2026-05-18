@@ -80,9 +80,9 @@
     const rows = [
       ['Private by default', 'Repertoires, notes, games, coach packs, and SRS progress are stored locally in this browser profile.'],
       ['Deployable on GitHub Pages', 'The repository includes CI checks and a Pages workflow. Push to main to publish.'],
-      ['Coach/student without backend', 'Coach packs export assignments and referenced lines as JSON so students can import them independently.'],
+      ['Coach/student offline sharing', 'Coach packs export assignments and referenced lines as JSON so students can import them independently.'],
       ['Backups matter', 'Use Settings → Backup / Restore before clearing browser data or changing devices.'],
-      ['Backend-ready path', 'BACKEND_MIGRATION.md documents the SaaS upgrade for auth, cloud sync, teams, permissions, and billing.'],
+      ['Cloud-ready path', 'BACKEND_MIGRATION.md documents the SaaS upgrade for auth, cloud sync, teams, permissions, and billing.'],
     ];
     m.panel.appendChild(h('div', { class: 'stack', style: { marginTop: '14px' } }, rows.map(([title, body]) =>
       h('div', { class: 'trust-row' }, [h('strong', {}, [title]), h('span', {}, [body])])
@@ -127,7 +127,7 @@
       h('div', { class: 'row-between' }, [
         h('div', {}, [
           h('div', { class: 'eyebrow' }, ['Coach pack exchange']),
-          h('h3', { style: { marginTop: '4px' } }, ['Share assignments without a backend']),
+          h('h3', { style: { marginTop: '4px' } }, ['Share assignments offline']),
           h('p', { class: 'muted', style: { fontSize: '13px', marginTop: '4px' } }, ['Export a JSON pack containing assigned lines and notes. The student imports it from the command palette or this screen.']),
         ]),
         h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [

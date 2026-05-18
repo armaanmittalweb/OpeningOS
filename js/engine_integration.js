@@ -11,7 +11,7 @@
   function backendBase() { return global.OOSSaaS && global.OOSSaaS.config ? global.OOSSaaS.config().backendUrl : (localStorage.getItem('oos.backend.url') || ''); }
   function token() { return global.OOSSaaS && global.OOSSaaS.token ? global.OOSSaaS.token() : localStorage.getItem('oos.backend.token') || ''; }
   async function backend(path, body) {
-    const base = backendBase(); if (!base) throw new Error('Backend not configured.');
+    const base = backendBase(); if (!base) throw new Error('Cloud analysis is not connected.');
     const r = await fetch(base.replace(/\/+$/, '') + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() }, body: JSON.stringify(body || {}) });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || data.message || r.statusText);
@@ -44,7 +44,7 @@
   }
   function analyzeWithWorker(fen, depth) {
     const w = ensureWorker();
-    if (!w) return Promise.reject(new Error('Stockfish worker not installed. Add engine/stockfish.js or use backend analysis.'));
+    if (!w) return Promise.reject(new Error('Local engine is not installed. Use cloud analysis when available.'));
     const id = 'job_' + (++seq);
     return new Promise((resolve, reject) => {
       pending.set(id, { resolve, reject, lines: [] });

@@ -3,7 +3,7 @@
  * Cache-first for static assets (CSS/JS/fonts) once they've been seen.
  * No external API calls are cached.
  */
-const VERSION = 'oos-v13-real-product-auth-import-ui';
+const VERSION = 'oos-v15-player-workflow-audit';
 const STATIC_CACHE = 'oos-static-' + VERSION;
 
 const STATIC_ASSETS = [
@@ -58,6 +58,8 @@ const STATIC_ASSETS = [
   './js/accessibility_complete.js',
   './js/observability.js',
   './js/product_auth.js',
+  './js/product_experience.js',
+  './js/player_experience_audit.js',
   './js/app.js',
 ];
 

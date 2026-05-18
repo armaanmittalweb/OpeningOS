@@ -101,7 +101,7 @@
     if (/password.*10|10 character/i.test(msg)) return 'Use at least 10 characters for your password.';
     if (/already exists|duplicate key|unique/i.test(msg)) return 'An account already exists for this email. Use Sign in instead.';
     if (/invalid email or password/i.test(msg)) return 'The email or password is incorrect.';
-    if (/self[- ]signed certificate|certificate chain|UNABLE_TO_VERIFY/i.test(msg)) return 'OpeningOS Cloud can reach the server, but the database TLS setting needs the latest backend patch. Redeploy the backend and try again.';
+    if (/self[- ]signed certificate|certificate chain|UNABLE_TO_VERIFY/i.test(msg)) return 'OpeningOS Cloud can reach the server, but the database connection needs attention. Redeploy the latest server patch and try again.';
     if (/failed to fetch|networkerror|load failed/i.test(msg)) return 'Could not reach OpeningOS Cloud. Check your connection and try again.';
     if (/sign in required|unauthorized|401/i.test(msg)) return 'Please sign in again to continue.';
     return msg.replace(/^Error:\s*/i, '');
@@ -194,15 +194,15 @@
     function render() {
       const state = authState();
       const user = state.user;
-      const backendField = field('Server URL', 'url', state.backendUrl || DEFAULT_BACKEND, 'url');
+      const backendField = field('Connection URL', 'url', state.backendUrl || DEFAULT_BACKEND, 'url');
       const name = field('Display name', 'text', displayNameFromUser(user, ''), 'name', 'Your name');
       const email = field('Email', 'email', user && user.email || '', 'email', 'you@example.com');
       const pass = field('Password', 'password', '', mode === 'signin' ? 'current-password' : 'new-password', mode === 'signin' ? 'Your password' : 'At least 10 characters');
-      const localName = field('Profile name', 'text', '', 'name', 'Player');
+      const localName = field('Workspace name', 'text', '', 'name', 'Player');
       const message = el('div', { class: 'product-auth-message', 'aria-live': 'polite' });
       const connection = el('details', { class: 'connection-details' }, [
         el('summary', { text: 'Connection settings' }),
-        el('p', { class: 'muted', text: 'OpeningOS Cloud is preconfigured. Change this only if you deploy your own backend.' }),
+        el('p', { class: 'muted', text: 'OpeningOS Cloud is preconfigured. Change this only if support asks you to.' }),
         backendField,
         el('button', { class: 'btn btn-sm', type: 'button', on: { click: async () => {
           message.className = 'product-auth-message'; message.textContent = 'Checking OpeningOS Cloud…';
@@ -246,7 +246,7 @@
       } else {
         card.append(
           el('h2', { text: mode === 'signin' ? 'Welcome back' : 'Create your account' }),
-          el('p', { class: 'muted', text: mode === 'signin' ? 'Sign in to sync your openings, imports and coach workspaces.' : 'Use a real account for sync, recovery, backend game imports and sharing.' }),
+          el('p', { class: 'muted', text: mode === 'signin' ? 'Sign in to sync your openings, imports and coach workspaces.' : 'Use a real account for sync, recovery, reliable game imports and sharing.' }),
           mode === 'signup' ? name : null,
           email,
           pass,
@@ -257,7 +257,7 @@
           ]),
           el('div', { class: 'product-secondary-actions' }, [
             el('button', { class: 'link-button', type: 'button', on: { click: () => { mode = mode === 'signin' ? 'signup' : 'signin'; render(); } } }, [mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in']),
-            el('button', { class: 'link-button muted-link', type: 'button', on: { click: () => { mode = 'local'; render(); } } }, ['Continue local-only'])
+            el('button', { class: 'link-button muted-link', type: 'button', on: { click: () => { mode = 'local'; render(); } } }, ['Continue offline'])
           ]),
           connection
         );

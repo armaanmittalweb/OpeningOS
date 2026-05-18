@@ -10,8 +10,8 @@
     "lint": "node tools/static_lint.mjs",
     "build": "node tools/build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "serve": "python3 -m http.server 4173",
-    "dev": "python3 -m http.server 4173",
+    "serve": "node tools/serve.mjs",
+    "dev": "node tools/serve.mjs",
     "validate:deploy": "npm test && npm run lint && npm run build",
     "validate:full": "npm run validate:deploy && npm run typecheck",
     "test:e2e": "playwright test",
@@ -23,7 +23,8 @@
     "deploy:local": "python3 -m http.server 4173",
     "db:migrate": "psql \"$DATABASE_URL\" -f server/migrations/001_init.sql && psql \"$DATABASE_URL\" -f server/migrations/002_saas_complete.sql && psql \"$DATABASE_URL\" -f server/migrations/003_fix_safe_rls.sql",
     "validate:server": "cd server && npm run build",
-    "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json"
+    "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
+    "test:e2e:ci": "playwright install --with-deps && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.1",

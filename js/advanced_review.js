@@ -97,7 +97,7 @@
     const moments = chosen ? deviationMoments(trace, graph, chosen, DB) : [];
     const rankedRepairs = rankRepairs(moments);
     const phase = trace.length <= 10 ? 'opening' : trace.length <= 24 ? 'opening-to-middlegame' : 'middlegame-reached';
-    return { gameId: game && game.id, phase, trace, matches, lineId: chosen && chosen.id, deviations: moments, moments, rankedRepairs, engineQuality: { status: 'queued-on-demand', message: 'Use engine analysis when backend/Stockfish is configured.' } };
+    return { gameId: game && game.id, phase, trace, matches, lineId: chosen && chosen.id, deviations: moments, moments, rankedRepairs, engineQuality: { status: 'queued-on-demand', message: 'Use deeper engine analysis when OpeningOS Cloud analysis is available.' } };
   }
   function patchDB() {
     const DB = global.OOSData;

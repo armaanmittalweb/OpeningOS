@@ -34,7 +34,7 @@
 
   async function request(path, options) {
     const c = config();
-    if (!c.backendUrl) throw new Error('Set a backend URL in Settings first.');
+    if (!c.backendUrl) throw new Error('Connect OpeningOS Cloud in Settings first.');
     const headers = Object.assign({ 'Content-Type': 'application/json' }, options && options.headers || {});
     if (c.token) headers.Authorization = 'Bearer ' + c.token;
     const res = await fetch(c.backendUrl + path, Object.assign({}, options || {}, { headers }));
@@ -203,14 +203,14 @@
   function renderAuthPanel() {
     const c = config();
     const root = document.createElement('div'); root.className = 'saas-grid';
-    const url = input('Backend URL', 'url', c.backendUrl, 'url');
+    const url = input('Connection URL', 'url', c.backendUrl, 'url');
     const email = input('Email', 'email', c.user && c.user.email || '', 'email');
     const password = input('Password', 'password', '', 'current-password');
     const name = input('Name', 'text', c.user && c.user.name || '', 'name');
-    const status = document.createElement('p'); status.className = 'muted'; status.textContent = signedIn() ? 'Signed in as ' + (c.user.email || c.user.id) : 'Not signed in. Local-first mode still works.';
+    const status = document.createElement('p'); status.className = 'muted'; status.textContent = signedIn() ? 'Signed in as ' + (c.user.email || c.user.id) : 'Not signed in. You can keep working offline and sync later.';
     const actions = document.createElement('div'); actions.className = 'row wrap';
     actions.append(
-      button('Save URL', 'btn btn-sm', () => { setState({ backendUrl: url.el.value.trim() }); toast('Backend URL saved', 'good'); }),
+      button('Save URL', 'btn btn-sm', () => { setState({ backendUrl: url.el.value.trim() }); toast('Connection URL saved', 'good'); }),
       button('Sign up', 'btn btn-sm btn-primary', async () => { try { setState({ backendUrl: url.el.value.trim() }); await signUp({ email: email.el.value.trim(), password: password.el.value, name: name.el.value.trim() }); toast('Account created', 'good'); global.OOSApp && global.OOSApp.go('settings'); } catch (e) { toast(e.message, 'warn'); } }),
       button('Sign in', 'btn btn-sm btn-primary', async () => { try { setState({ backendUrl: url.el.value.trim() }); await signIn({ email: email.el.value.trim(), password: password.el.value }); toast('Signed in', 'good'); global.OOSApp && global.OOSApp.go('settings'); } catch (e) { toast(e.message, 'warn'); } }),
       button('Sign out', 'btn btn-sm', async () => { await signOut(); toast('Signed out', 'good'); global.OOSApp && global.OOSApp.go('settings'); }),
@@ -219,7 +219,7 @@
       button('Login with passkey', 'btn btn-sm', async () => { try { await loginWithPasskey(email.el.value.trim()); toast('Passkey login complete', 'good'); } catch (e) { toast(e.message, 'warn'); } })
     );
     const oauth = document.createElement('div'); oauth.className = 'row wrap';
-    PROVIDERS.forEach(p => oauth.appendChild(button('OAuth: ' + p, 'btn btn-sm', async () => { try { setState({ backendUrl: url.el.value.trim() }); await startOAuth(p); } catch (e) { toast(e.message, 'warn'); } })));
+    PROVIDERS.forEach(p => oauth.appendChild(button('Connect with ' + p, 'btn btn-sm', async () => { try { setState({ backendUrl: url.el.value.trim() }); await startOAuth(p); } catch (e) { toast(e.message, 'warn'); } })));
     root.append(card('Account and session', [url.wrap, name.wrap, email.wrap, password.wrap, actions, oauth, status]));
     return root;
   }
@@ -236,11 +236,11 @@
       button('Create share link', 'btn btn-sm', async () => { try { const r = await createShareLink('line', shareTarget.el.value.trim(), { visibility: 'unlisted', permission: 'read' }); toast('Share URL created', 'good'); } catch (e) { toast(e.message, 'warn'); } }),
       button('Queue Lichess import', 'btn btn-sm', async () => { try { const r = await queueImportJob('lichess', { username: importUser.el.value.trim() }); toast('Import queued: ' + r.id, 'good'); } catch (e) { toast(e.message, 'warn'); } }),
       button('Queue Chess.com import', 'btn btn-sm', async () => { try { const r = await queueImportJob('chesscom', { username: importUser.el.value.trim() }); toast('Import queued: ' + r.id, 'good'); } catch (e) { toast(e.message, 'warn'); } }),
-      button('Run engine analysis', 'btn btn-sm', async () => { try { const r = await queueAnalysisJob({ kind: 'repertoire', snapshot: global.OOSData && global.OOSData.graphNativeSnapshot ? global.OOSData.graphNativeSnapshot() : null }); toast('Analysis queued: ' + r.id, 'good'); } catch (e) { toast(e.message, 'warn'); } }),
-      button('Billing portal', 'btn btn-sm', async () => { try { const r = await billingPortal(); if (r.url) location.href = r.url; else toast('Portal unavailable in this plan', 'warn'); } catch (e) { toast(e.message, 'warn'); } }),
-      button('Admin dashboard check', 'btn btn-sm', async () => { try { const r = await adminDashboard(); toast('Admin: ' + (r.users || 0) + ' users', 'good'); } catch (e) { toast(e.message, 'warn'); } })
+      button('Check repertoire quality', 'btn btn-sm', async () => { try { const r = await queueAnalysisJob({ kind: 'repertoire', snapshot: global.OOSData && global.OOSData.graphNativeSnapshot ? global.OOSData.graphNativeSnapshot() : null }); toast('Analysis queued: ' + r.id, 'good'); } catch (e) { toast(e.message, 'warn'); } }),
+      button('Plan settings', 'btn btn-sm', async () => { try { const r = await billingPortal(); if (r.url) location.href = r.url; else toast('Portal unavailable in this plan', 'warn'); } catch (e) { toast(e.message, 'warn'); } }),
+      button('Workspace health check', 'btn btn-sm', async () => { try { const r = await adminDashboard(); toast('Admin: ' + (r.users || 0) + ' users', 'good'); } catch (e) { toast(e.message, 'warn'); } })
     );
-    root.append(card('SaaS operations', [student.wrap, shareTarget.wrap, importUser.wrap, actions]));
+    root.append(card('Cloud tools', [student.wrap, shareTarget.wrap, importUser.wrap, actions]));
     return root;
   }
 
@@ -249,8 +249,8 @@
     if (!app || app.querySelector('[data-saas-panel="true"]')) return;
     if (!(location.hash || '').includes('settings')) return;
     const panel = document.createElement('section'); panel.className = 'card'; panel.dataset.saasPanel = 'true';
-    const h = document.createElement('h2'); h.textContent = 'SaaS, accounts, collaboration and billing';
-    const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Configure a deployed backend to enable production accounts, password recovery, OAuth, passkeys, live coach workspaces, server imports, engine jobs, sharing, billing, admin, audit logs, and multi-device sync.';
+    const h = document.createElement('h2'); h.textContent = 'Account, collaboration and sharing';
+    const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Manage your OpeningOS account, password recovery, coach workspaces, game imports, sharing and multi-device sync.';
     panel.append(h, p, renderAuthPanel(), renderOperationsPanel());
     const target = app.querySelector('.settings-grid') || app.firstElementChild || app;
     target.appendChild(panel);

@@ -253,7 +253,7 @@ app.get('/teams/libraries', { preHandler: app.authenticate }, async (req: any) =
 type ImportedGame = { pgn: string; headers?: Record<string, any>; source?: string; sourceId?: string; url?: string; endTime?: number | null };
 const ImportSourceSchema = z.object({ source: z.enum(['lichess','chesscom']), username: z.string().trim().min(1).max(80), max: z.number().int().min(1).max(100).default(25) });
 
-app.post('/imports/fetch-games', { preHandler: app.authenticate }, async (req: any) => {
+app.post('/imports/fetch-games', { preHandler: app.authenticate, config: { rateLimit: { max: Number(process.env.IMPORT_RATE_LIMIT_MAX || 18), timeWindow: process.env.IMPORT_RATE_LIMIT_WINDOW || '15 minutes' } } }, async (req: any) => {
   const u = req.user as AuthUser;
   const b = ImportSourceSchema.parse(req.body);
   const result = await fetchRemoteGames(b.source, b.username, b.max);
@@ -261,7 +261,7 @@ app.post('/imports/fetch-games', { preHandler: app.authenticate }, async (req: a
   return result;
 });
 
-app.post('/imports/jobs', { preHandler: app.authenticate }, async (req: any) => {
+app.post('/imports/jobs', { preHandler: app.authenticate, config: { rateLimit: { max: Number(process.env.IMPORT_RATE_LIMIT_MAX || 18), timeWindow: process.env.IMPORT_RATE_LIMIT_WINDOW || '15 minutes' } } }, async (req: any) => {
   const u = req.user as AuthUser;
   const b = z.object({ source: z.enum(['pgn','lichess','chesscom','study','file']), payload: z.record(z.any()).default({}) }).parse(req.body);
   const r = await query<{ id:string }>('insert into import_jobs(user_id,source,payload,status) values($1,$2,$3,\'queued\') returning id', [u.id,b.source,b.payload]);
@@ -276,7 +276,7 @@ app.get('/imports/jobs/:id', { preHandler: app.authenticate }, async (req: any) 
 });
 
 
-app.post('/imports/fetch', { preHandler: app.authenticate }, async (req: any) => {
+app.post('/imports/fetch', { preHandler: app.authenticate, config: { rateLimit: { max: Number(process.env.IMPORT_RATE_LIMIT_MAX || 18), timeWindow: process.env.IMPORT_RATE_LIMIT_WINDOW || '15 minutes' } } }, async (req: any) => {
   const body = z.object({ source: z.enum(['lichess','chesscom','pgn']), username: z.string().trim().optional(), max: z.number().int().min(1).max(100).default(20), pgn: z.string().optional() }).parse(req.body || {});
   if (body.source === 'pgn') return { source: 'pgn', count: body.pgn ? splitPgnBundle(body.pgn).length : 0, games: splitPgnBundle(body.pgn || '').map(pgn => ({ pgn, headers: {} })) };
   if (!body.username) throw new Error('Username is required.');

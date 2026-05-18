@@ -205,7 +205,7 @@
     accountRow.className = 'pm-cloud-status';
     accountRow.innerHTML = cloud && cloud.user
       ? `<span class="status-dot good"></span><span>Signed in as ${escapeHtml(cloud.user.email || 'OpeningOS account')}</span>`
-      : `<span class="status-dot warn"></span><span>Local profile only</span>`;
+      : `<span class="status-dot warn"></span><span>Offline workspace</span>`;
     panel.appendChild(accountRow);
 
     panel.appendChild(divider());
@@ -527,7 +527,7 @@
     global.OOSProfiles.init();
 
     // Product-first account experience: when the deployed backend is available,
-    // do not silently boot into local-only mode. Existing local profiles remain
+    // do not silently boot into offline mode. Existing local profiles remain
     // available through the explicit offline option, but the default product
     // path is real signup/login + cloud sync.
     if (global.OOSProductAuth && global.OOSProductAuth.shouldGate()) {
@@ -674,7 +674,7 @@
           Use a real account for cloud sync, coach workspaces, hosted sharing, and server-side Lichess/Chess.com imports. Local-only mode is still available for private offline testing.
         </p>
         <div class="auth-grid">
-          <label class="field"><span>Cloud server</span><input class="input" id="authBackend" type="url" value="${escapeHtml(backend)}" autocomplete="url" /></label>
+          <label class="field"><span>Connection</span><input class="input" id="authBackend" type="url" value="${escapeHtml(backend)}" autocomplete="url" /></label>
           <label class="field"><span>Name</span><input class="input" id="authName" placeholder="Your name" autocomplete="name" /></label>
           <label class="field"><span>Email</span><input class="input" id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" /></label>
           <label class="field"><span>Password</span><input class="input" id="authPassword" type="password" placeholder="At least 10 characters" autocomplete="current-password" /></label>
@@ -683,10 +683,10 @@
         <div class="auth-actions">
           <button class="btn btn-primary" id="authSignup">Create account</button>
           <button class="btn" id="authLogin">Log in</button>
-          <button class="btn btn-ghost" id="authLocal">Continue local-only</button>
+          <button class="btn btn-ghost" id="authLocal">Continue offline</button>
         </div>
         <div class="auth-footnote">
-          Already deployed backend detected: <code>${escapeHtml(PRODUCTION_BACKEND_URL)}</code>
+          Sync connection is ready: <code>${escapeHtml(PRODUCTION_BACKEND_URL)}</code>
         </div>
       </div>`;
     document.body.appendChild(wrap);
@@ -700,11 +700,11 @@
     function setStatus(msg, kind='') { status.textContent = msg || ''; status.dataset.kind = kind; }
     async function finishWithAccount(kind) {
       const baseUrl = backendInput.value.trim().replace(/\/+$/, '');
-      if (!global.OOSAuthBridge && (!API || !API.saveCfg)) throw new Error('SaaS account layer is not loaded. Refresh and try again.');
+      if (!global.OOSAuthBridge && (!API || !API.saveCfg)) throw new Error('Cloud account layer is not loaded. Refresh and try again.');
       const email = emailInput.value.trim();
       const password = passInput.value;
       const name = nameInput.value.trim();
-      if (!baseUrl) throw new Error('Cloud server URL is required.');
+      if (!baseUrl) throw new Error('Connection URL is required.');
       if (!email || !password) throw new Error('Email and password are required.');
       setStatus(kind === 'signup' ? 'Creating account…' : 'Signing in…');
       let result;
@@ -736,7 +736,7 @@
       if (!global.OOSProfiles.activeId()) global.OOSProfiles.create({ name, role: 'player' });
       wrap.remove();
       onDone && onDone();
-      toast('Using local-only profile. You can sign in later from the avatar menu or Settings.', 'info');
+      toast('Using offline profile. You can sign in later from the avatar menu or Settings.', 'info');
     });
     passInput.addEventListener('keydown', e => { if (e.key === 'Enter') run(emailInput.value ? 'login' : 'signup'); });
     setTimeout(() => emailInput.focus(), 60);
@@ -775,11 +775,11 @@
           <div>
             <div class="eyebrow">OpeningOS Cloud</div>
             <h3 id="accountTitle">${signed && signed.user ? 'Your account is connected' : 'Sign in to sync your preparation'}</h3>
-            <p class="muted">Use a real account for cloud sync, game imports, coach workspaces, sharing, and recovery. You can still continue local-only for private offline study.</p>
+            <p class="muted">Use a real account for cloud sync, game imports, coach workspaces, sharing, and recovery. You can still continue offline for private offline study.</p>
           </div>
         </div>
         <div class="account-grid">
-          <label class="field"><span>Cloud server</span><input class="input" id="acctBackend" type="url" value="${escapeHtml(defaultBackendUrl())}" /></label>
+          <label class="field"><span>Connection</span><input class="input" id="acctBackend" type="url" value="${escapeHtml(defaultBackendUrl())}" /></label>
           <label class="field"><span>Email</span><input class="input" id="acctEmail" type="email" autocomplete="email" placeholder="you@example.com" value="${escapeHtml((signed.user && signed.user.email) || '')}" /></label>
           <label class="field"><span>Password</span><input class="input" id="acctPassword" type="password" autocomplete="current-password" placeholder="At least 10 characters" /></label>
           <label class="field"><span>Display name</span><input class="input" id="acctName" type="text" autocomplete="name" placeholder="Your name" value="${escapeHtml((global.OOSProfiles.active() || {}).name || '')}" /></label>
@@ -788,7 +788,7 @@
         <div class="account-actions">
           <button class="btn btn-primary" id="acctSignup">Create account</button>
           <button class="btn" id="acctLogin">Log in</button>
-          <button class="btn btn-ghost" id="acctLocal">Continue local-only</button>
+          <button class="btn btn-ghost" id="acctLocal">Continue offline</button>
         </div>
       </div>`;
     document.body.appendChild(wrap);
@@ -840,7 +840,7 @@
     const banner = document.createElement('div');
     banner.id = 'cloudAccountBanner';
     banner.className = 'cloud-account-banner';
-    banner.innerHTML = `<div><strong>Cloud sync is not connected.</strong><span> Sign in for cross-device prep, backend game imports, sharing, and recovery.</span></div><div class="row"><button class="btn btn-sm btn-primary">Sign in</button><button class="btn btn-sm btn-ghost">Stay local</button></div>`;
+    banner.innerHTML = `<div><strong>Cloud sync is not connected.</strong><span> Sign in for cross-device prep, reliable game imports, sharing, and recovery.</span></div><div class="row"><button class="btn btn-sm btn-primary">Sign in</button><button class="btn btn-sm btn-ghost">Stay local</button></div>`;
     banner.querySelector('.btn-primary').addEventListener('click', () => showAccountGateway(() => go(currentView, currentOpts)));
     banner.querySelector('.btn-ghost').addEventListener('click', () => { localStorage.setItem('oos.account.localOnly', 'true'); banner.remove(); });
     app.prepend(banner);
@@ -848,14 +848,14 @@
 
   function promptCreateFirstProfile(onDone) {
     // Production first-run: prefer the deployed backend account flow. It still
-    // offers a clear local-only fallback, but users should see real signup/login
+    // offers a clear offline fallback, but users should see real signup/login
     // first instead of thinking OpeningOS is only a local profile switcher.
     if (global.OOSAuthBridge && typeof global.OOSAuthBridge.showFirstRun === 'function') {
       global.OOSAuthBridge.showFirstRun(onDone);
       return;
     }
 
-    // Fallback local-only modal if the account bridge did not load.
+    // Fallback offline modal if the account bridge did not load.
     const wrap = document.createElement('div');
     wrap.className = 'modal';
     wrap.innerHTML = `

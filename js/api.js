@@ -1,7 +1,7 @@
 /* OpeningOS — public/API-backed game import clients
  * Signed-in users use the deployed OpeningOS backend import worker first so
  * Chess.com/Lichess CORS, rate limits and heavy fetches do not break the UI.
- * Offline/local-only users fall back to browser public APIs. Returns [{ pgn, headers }].
+ * Offline/offline users fall back to browser public APIs. Returns [{ pgn, headers }].
  */
 (function (global) {
   'use strict';
@@ -17,7 +17,7 @@
       const issue = Array.isArray(parsed) ? parsed[0] : parsed.issues && parsed.issues[0];
       if (issue && Array.isArray(issue.path) && issue.path.join('.').includes('password')) return 'Use at least 10 characters for your password.';
     } catch (_) {}
-    if (/self[- ]signed certificate|certificate chain/i.test(raw)) return 'OpeningOS Cloud is connected, but the backend database TLS setting needs the latest server patch. Redeploy the backend and try again.';
+    if (/self[- ]signed certificate|certificate chain/i.test(raw)) return 'OpeningOS Cloud is connected, but the database connection needs attention. Redeploy the latest server patch and try again.';
     if (/failed to fetch|networkerror/i.test(raw)) return 'Could not reach the game service. Try again or sign in to use OpeningOS Cloud imports.';
     if (/sign in required|401/i.test(raw)) return 'Sign in to OpeningOS Cloud to import games reliably.';
     return raw.replace(/^Error:\s*/i, '');
@@ -49,7 +49,7 @@
 
   async function requestBackend(path, opts) {
     const cfg = backendConfig();
-    if (!cfg.baseUrl) throw new Error('Backend URL is not configured.');
+    if (!cfg.baseUrl) throw new Error('Connection URL is not configured.');
     const headers = Object.assign({ 'Content-Type': 'application/json' }, (opts && opts.headers) || {});
     if (cfg.token) headers.Authorization = 'Bearer ' + cfg.token;
     const res = await fetch(cfg.baseUrl + path, Object.assign({}, opts || {}, { headers }));
@@ -61,13 +61,13 @@
 
   async function backendImportGames(source, username, max) {
     const cfg = backendConfig();
-    if (!cfg.token) throw new Error('Please sign in to import via the OpeningOS backend.');
+    if (!cfg.token) throw new Error('Please sign in to use cloud game import.');
     const created = await requestBackend('/imports/jobs', {
       method: 'POST',
       body: JSON.stringify({ source, payload: { username, max: Number(max || 20), limit: Number(max || 20) } }),
     });
     const id = created.id;
-    if (!id) throw new Error('Backend did not return an import job id.');
+    if (!id) throw new Error('Cloud import did not return a job id.');
     let last = null;
     for (let i = 0; i < 30; i++) {
       await sleep(i < 4 ? 700 : 1200);
@@ -83,7 +83,7 @@
       }
       if (last && last.status === 'failed') throw new Error(friendlyError(last.error || 'OpeningOS Cloud import failed.'));
     }
-    throw new Error('Backend import is still running. Try again in a moment.');
+    throw new Error('Cloud import is still running. Try again in a moment.');
   }
 
   // --- Lichess --------------------------------------------------------------
@@ -91,7 +91,7 @@
     const cfg = backendConfig();
     if (cfg.token) {
       try { return await backendImportGames('lichess', username, max); }
-      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast(friendlyError(backendErr) + ' Trying browser import.', 'warn'); }
+      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast(friendlyError(backendErr) + ' Trying direct browser import.', 'warn'); }
     }
     try {
       const url = `https://lichess.org/api/games/user/${encodeURIComponent(username)}?max=${max}&moves=true&tags=true&clocks=false&evals=false`;
@@ -112,7 +112,7 @@
     const cfg = backendConfig();
     if (cfg.token) {
       try { return await backendImportGames('chesscom', username, max); }
-      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast(friendlyError(backendErr) + ' Trying browser import.', 'warn'); }
+      catch (backendErr) { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast(friendlyError(backendErr) + ' Trying direct browser import.', 'warn'); }
     }
     try {
       const games = await chesscomDirect(username, max);

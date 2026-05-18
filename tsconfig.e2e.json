@@ -3,8 +3,15 @@
   "compilerOptions": {
     "moduleResolution": "NodeNext",
     "module": "NodeNext",
-    "types": ["node", "@playwright/test"],
-    "strict": false
+    "types": [
+      "node",
+      "@playwright/test"
+    ],
+    "strict": false,
+    "exactOptionalPropertyTypes": false
   },
-  "include": ["playwright.config.ts", "tests/e2e/**/*.ts"]
+  "include": [
+    "playwright.config.ts",
+    "tests/e2e/**/*.ts"
+  ]
 }

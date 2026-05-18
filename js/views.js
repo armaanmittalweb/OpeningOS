@@ -740,9 +740,9 @@
     const replyId = 'replyMove_' + line.id;
     const varId = 'variationMoves_' + line.id;
     const kids = [];
-    kids.push(el('div', { class: 'eyebrow' }, ['Graph editor']));
+    kids.push(el('div', { class: 'eyebrow' }, ['Position tools']));
     kids.push(el('p', { class: 'muted', style: { fontSize: '12px', marginTop: '4px' } }, [
-      editable ? 'Insert/remove moves, create real branch lines, split continuations, mark retired, or merge known transpositions.' : 'Create an editable copy to change this curated line.'
+      editable ? 'Add replies, variations, ideas, or practice changes from this exact position.' : 'Create your own editable copy to customize this line.'
     ]));
     if (!editable) {
       kids.push(el('button', { class: 'btn btn-sm', style: { marginTop: '8px' }, on: { click: () => { const copy = DB.duplicateLine(line.id); global.OOSApp.go('repertoire', { lineId: copy.id, ply: currentPly }); } } }, ['Customize copy']));
@@ -802,7 +802,7 @@
     ]));
     if (trans.length) {
       kids.push(el('div', { class: 'mini-transpositions', style: { marginTop: '10px' } }, [
-        el('div', { class: 'muted', style: { fontSize: '12px', marginBottom: '6px' } }, ['Merge with a transposed line:']),
+        el('div', { class: 'muted', style: { fontSize: '12px', marginBottom: '6px' } }, ['Transposition options:']),
         ...trans.slice(0, 3).map(t => el('button', { class: 'btn btn-sm', style: { marginRight: '6px', marginBottom: '6px' }, on: { click: () => {
           DB.mergeLineWithTransposition(line.id, t.lineId);
           global.OOSApp.toast('Merged and retired duplicate transposition line.', 'good');
@@ -2698,11 +2698,11 @@
       el('div', {}, [
         el('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, [
           el('div', { class: 'eyebrow' }, ['Coach']),
-          el('span', { class: 'pill pill-info pill-plain', title: 'Stored on this device only' }, ['Local-only']),
+          el('span', { class: 'pill pill-info pill-plain', title: 'Cloud sync available' }, ['Workspace']),
         ]),
         el('h2', { style: { marginTop: '4px' } }, ['Your students']),
         el('div', { class: 'muted', style: { marginTop: '4px', fontSize: '13px' } }, [
-          'Track student records and assignments locally. Real coach\u2194student syncing across devices needs a backend (see BACKEND_MIGRATION).',
+          'Track student records and assignments. Connect cloud sync to share progress across devices.',
         ]),
       ]),
       el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, [
@@ -3795,7 +3795,7 @@
       panel.appendChild(el('div', { class: 'eyebrow' }, ['Import games']));
       panel.appendChild(el('h3', {}, ['Bring your real games or theory']));
       panel.appendChild(el('p', { class: 'muted', style: { fontSize: '13px', marginTop: '4px' } }, [
-        'PGN, Lichess, or Chess.com — signed-in accounts use the backend importer first, then we parse, validate, and queue the games locally.',
+        'PGN, Lichess, or Chess.com — signed-in accounts use cloud import first, then OpeningOS parses, matches, and queues repairs.',
       ]));
 
       // Source tabs
@@ -3836,7 +3836,7 @@
           el('span', { class: 'muted', style: { fontSize: '12px' } }, ['games']),
         ]));
         panel.appendChild(el('div', { class: 'muted', style: { fontSize: '12px', marginTop: '8px' } }, [
-          'Public profiles only. Signed-in accounts use your OpeningOS backend securely fetches games in the background for reliability; offline users fall back to public browser APIs.',
+          'Public profiles only. Signed-in accounts use your OpeningOS cloud import is used when you are signed in; offline study can still use browser public imports.',
         ]));
         const fetchBtn = el('button', { class: 'btn btn-primary', on: { click: async () => {
           const u = username.value.trim();
