@@ -67,6 +67,12 @@ function publicUrl(path: string) { return `${FRONTEND_URL}${path}`; }
 
 app.get('/health', async () => ({ ok: true, service: 'openingos-backend', mode: process.env.NODE_ENV || 'development', at: new Date().toISOString() }));
 
+app.get('/health/db', async () => {
+  const started = Date.now();
+  const result = await query<{ ok: number; now: string }>('select 1 as ok, now()::text as now');
+  return { ok: true, service: 'openingos-backend', database: 'connected', latencyMs: Date.now() - started, dbNow: result.rows[0]?.now, at: new Date().toISOString() };
+});
+
 // --- Auth, account recovery, OAuth and passkeys ------------------------
 app.post('/auth/signup', async (req, reply) => {
   const body = SignupSchema.parse(req.body);
@@ -379,7 +385,7 @@ function friendlyServerError(err: any) {
   }
   const message = String(err?.message || err || 'Request failed');
   if (/self[- ]signed certificate|certificate chain|UNABLE_TO_VERIFY/i.test(message)) {
-    return { error: 'Database TLS verification failed. The server is configured to use DigitalOcean Postgres SSL; redeploy with the latest database TLS patch.', code: 'database_tls_error' };
+    return { error: 'Database connection needs a redeploy with the latest DigitalOcean SSL settings. The app is encrypted with TLS, but the certificate verifier is still using the old config.', code: 'database_tls_error' };
   }
   if (/duplicate key|unique constraint/i.test(message)) return { error: 'This item already exists.', code: 'conflict' };
   return { error: message || 'Request failed', code: err?.code || 'request_failed' };
