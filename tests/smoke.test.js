@@ -33,7 +33,7 @@ for (const required of ['vendor/chess.min.js', 'js/product_auth.js', 'js/player_
   assert(index.includes(required), `index.html must load ${required}`);
 }
 assert(index.indexOf('js/world_class_product_core.js') > index.indexOf('js/app.js'), 'World-class core should load after app.js so it can enhance rendered pages');
-assert(sw.includes('oos-v18-world-class-product-core'), 'Service worker cache version must be bumped for the world-class core release');
+assert(sw.includes('oos-v19-freeze-fix-auth-text'), 'Service worker cache version must be bumped for the world-class core release');
 assert(sw.includes('./js/world_class_product_core.js'), 'Service worker must cache the world-class product core');
 assert(!fs.existsSync(path.join(root, 'Dockerfile')), 'Root Dockerfile must not exist; it can make DigitalOcean deploy the wrong component');
 assert(fs.existsSync(path.join(root, 'Dockerfile.frontend')), 'Frontend Dockerfile should remain renamed as Dockerfile.frontend');
@@ -46,6 +46,7 @@ for (const required of ['.wc-sidebar', '.wc-topbar', '.wc-command-center', '.wc-
   assert(styles.includes(required), `World-class CSS missing ${required}`);
 }
 assert(!worldCore.includes('JWT'), 'User-facing world-class core should not expose JWT language');
+assert(!worldCore.includes("if ($('#wcSidebar')) { updateActiveNav(); updateSyncTrust(); return; }"), 'World-class shell must not recursively call updateSyncTrust from ensureShell');
 
 // Account/product auth should stay user-facing and hide connection details behind advanced controls.
 for (const required of ['Create account', 'Sign in', 'Continue offline', 'Connection settings', 'friendlyError', 'Use at least 10 characters']) {

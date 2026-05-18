@@ -660,23 +660,52 @@
   }
 
   function patchAuthText() {
-    // Hide deployment plumbing from normal users by replacing old modal labels if
-    // legacy account UI still appears from any route.
-    const mo = new MutationObserver(() => {
-      $all('label, span, p, div, button').forEach(n => {
+    // Hide deployment plumbing from normal users, but do it safely. The old
+    // implementation rewrote textContent for hundreds of nodes on every DOM
+    // mutation, which could retrigger the observer and freeze the page.
+    if (document.__oosProductAuthTextPatched) return;
+    document.__oosProductAuthTextPatched = true;
+
+    const patterns = [
+      [/backend game imports/gi, 'reliable game imports'],
+      [/backend imports/gi, 'cloud imports'],
+      [/Backend API/gi, 'Connection settings'],
+      [/Cloud server URL/gi, 'Connection URL'],
+      [/Cloud server/gi, 'Connection'],
+      [/Local profile only/gi, 'Offline workspace'],
+      [/local-only/gi, 'offline'],
+      [/SaaS/gi, 'Cloud']
+    ];
+    const selector = '.account-gateway label, .account-gateway span, .account-gateway p, .account-gateway button, .auth-shell label, .auth-shell span, .auth-shell p, .auth-shell button, .modal label, .modal span, .modal p, .modal button';
+    let scheduled = false;
+
+    function translate(text) {
+      let out = String(text || '');
+      patterns.forEach(([re, to]) => { out = out.replace(re, to); });
+      return out;
+    }
+    function scan(root) {
+      scheduled = false;
+      $all(selector, root || document).forEach(n => {
         if (!n.childNodes || n.childNodes.length !== 1 || n.firstChild.nodeType !== 3) return;
-        n.textContent = n.textContent
-          .replace(/backend game imports/gi, 'reliable game imports')
-          .replace(/backend imports/gi, 'cloud imports')
-          .replace(/Backend API/gi, 'Connection settings')
-          .replace(/Cloud server URL/gi, 'Connection URL')
-          .replace(/Cloud server/gi, 'Connection')
-          .replace(/Local profile only/gi, 'Offline workspace')
-          .replace(/local-only/gi, 'offline')
-          .replace(/SaaS/gi, 'Cloud');
+        const before = n.textContent || '';
+        const after = translate(before);
+        if (after !== before) n.textContent = after;
       });
+    }
+    function schedule(root) {
+      if (scheduled) return;
+      scheduled = true;
+      const run = () => scan(root || document);
+      if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 800 });
+      else setTimeout(run, 120);
+    }
+
+    scan(document);
+    const mo = new MutationObserver(mutations => {
+      if (mutations.some(m => Array.from(m.addedNodes || []).some(n => n.nodeType === 1))) schedule(document);
     });
-    mo.observe(document.documentElement, { childList: true, subtree: true });
+    mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
   }
 
   function init() {
@@ -686,7 +715,10 @@
     patchAppNavigation();
     patchAuthText();
     updateTrustPill();
-    setInterval(() => { patchViews(); patchAppNavigation(); updateTrustPill(); }, 3000);
+    // Lightweight health refresh only. View decorators are installed once and
+    // run from render/navigation wrappers; repeatedly patching every few seconds
+    // made the page feel heavy on slower devices.
+    setInterval(() => { updateTrustPill(); }, 15000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

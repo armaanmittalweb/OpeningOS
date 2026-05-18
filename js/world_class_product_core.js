@@ -24,6 +24,8 @@
   let enhancementTimer = null;
   let mutationObserver = null;
   let installDone = false;
+  let enhancementBusy = false;
+  let lastLanguageSanitizeAt = 0;
 
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $all(sel, root) { return Array.from((root || document).querySelectorAll(sel)); }
@@ -75,7 +77,7 @@
   }
 
   function ensureShell() {
-    if ($('#wcSidebar')) { updateActiveNav(); updateSyncTrust(); return; }
+    if ($('#wcSidebar')) { updateActiveNav(); return; }
 
     const sidebar = el('aside', { id: 'wcSidebar', class: 'wc-sidebar', 'aria-label': 'OpeningOS workspace navigation' }, [
       el('div', { class: 'wc-sidebar-brand' }, [
@@ -212,21 +214,40 @@
   function installMutationEnhancer() {
     const app = $('#app');
     if (!app || mutationObserver) return;
-    mutationObserver = new MutationObserver(() => scheduleEnhance());
-    mutationObserver.observe(app, { childList: true, subtree: true });
+    mutationObserver = new MutationObserver(mutations => {
+      if (mutations.some(m => m.addedNodes && m.addedNodes.length)) scheduleEnhance();
+    });
+    // Observe only direct view swaps. Watching the full subtree caused repeated
+    // enhancement cycles while the enhancement layer itself was adding DOM.
+    mutationObserver.observe(app, { childList: true, subtree: false });
     window.addEventListener('hashchange', () => scheduleEnhance());
     window.addEventListener('resize', () => document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px'), { passive: true });
     document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px');
   }
   function scheduleEnhance() {
     clearTimeout(enhancementTimer);
-    enhancementTimer = setTimeout(enhance, 60);
+    const run = () => {
+      if (enhancementBusy) return;
+      enhancementBusy = true;
+      try { enhance(); } finally { enhancementBusy = false; }
+    };
+    enhancementTimer = setTimeout(() => {
+      if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 900 });
+      else run();
+    }, 120);
   }
   function enhance() {
     ensureShell();
     updateActiveNav();
-    sanitizeLanguage(document.body);
     const view = appView();
+    const app = $('#app');
+    // Language cleanup is useful, but it should be scoped and throttled. A full
+    // document TreeWalker on every mutation was the main source of unresponsiveness.
+    const now = Date.now();
+    if (app && now - lastLanguageSanitizeAt > 1000) {
+      sanitizeLanguage(app);
+      lastLanguageSanitizeAt = now;
+    }
     if (view === 'today') enhanceToday();
     if (view === 'repertoire') enhanceRepertoire();
     if (view === 'games') enhanceGames();
@@ -249,7 +270,11 @@
     });
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { let s = n.nodeValue; replacements.forEach(([re, to]) => { s = s.replace(re, to); }); n.nodeValue = s; });
+    nodes.forEach(n => {
+      let next = n.nodeValue;
+      replacements.forEach(([re, to]) => { next = next.replace(re, to); });
+      if (next !== n.nodeValue) n.nodeValue = next;
+    });
     $all('.account-gateway .account-grid .field:first-child, .auth-grid .field:first-child').forEach(n => n.style.display = 'none');
   }
 
@@ -347,7 +372,10 @@
         if (!node.querySelector('.wc-line-pills')) node.appendChild(pills);
         node.tabIndex = 0;
         node.setAttribute('role', 'button');
-        node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); } });
+        if (node.dataset.wcLineKeyboard !== '1') {
+          node.dataset.wcLineKeyboard = '1';
+          node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); } });
+        }
       }
     });
   }
