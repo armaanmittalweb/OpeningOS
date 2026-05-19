@@ -3,7 +3,7 @@
  * Cache-first for static assets (CSS/JS/fonts) once they've been seen.
  * No external API calls are cached.
  */
-const VERSION = 'oos-v23-settings-games-repertoire-polish';
+const VERSION = 'oos-v24-no-observer-stability';
 const STATIC_CACHE = 'oos-static-' + VERSION;
 
 const STATIC_ASSETS = [

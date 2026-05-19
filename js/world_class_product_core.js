@@ -212,19 +212,24 @@
   }
 
   function installMutationEnhancer() {
-    const app = $('#app');
-    if (!app || mutationObserver) return;
-    mutationObserver = new MutationObserver(mutations => {
-      if (mutations.some(m => m.addedNodes && m.addedNodes.length)) scheduleEnhance();
-    });
-    // Observe only direct view swaps. Watching the full subtree caused repeated
-    // enhancement cycles while the enhancement layer itself was adding DOM.
-    mutationObserver.observe(app, { childList: true, subtree: false });
-    window.addEventListener('hashchange', () => scheduleEnhance());
-    window.addEventListener('resize', () => document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px'), { passive: true });
+  window.addEventListener('hashchange', function () { scheduleEnhance(); });
+
+  window.addEventListener('resize', function () {
     document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px');
+  }, { passive: true });
+
+  document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px');
+
+  if (global.OOSApp && !global.OOSApp.__wcEnhanceGoHooked && typeof global.OOSApp.go === 'function') {
+    const oldGo = global.OOSApp.go.bind(global.OOSApp);
+    global.OOSApp.go = function wcGoPatched() {
+      const out = oldGo.apply(this, arguments);
+      scheduleEnhance();
+      return out;
+    };
+    global.OOSApp.__wcEnhanceGoHooked = true;
   }
-  function scheduleEnhance() {
+} function scheduleEnhance() {
     clearTimeout(enhancementTimer);
     const run = () => {
       if (enhancementBusy) return;

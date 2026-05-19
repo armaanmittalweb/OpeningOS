@@ -703,10 +703,7 @@
     }
 
     scan(document);
-    const mo = new MutationObserver(mutations => {
-      if (mutations.some(m => Array.from(m.addedNodes || []).some(n => n.nodeType === 1))) schedule(document);
-    });
-    mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    global.OOSProductLanguageRefresh = function () { schedule(document); }; setTimeout(function () { schedule(document); }, 250);
   }
 
   function init() {

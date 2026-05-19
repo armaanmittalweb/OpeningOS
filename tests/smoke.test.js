@@ -33,7 +33,7 @@ for (const required of ['vendor/chess.min.js', 'js/product_auth.js', 'js/player_
   assert(index.includes(required), `index.html must load ${required}`);
 }
 assert(index.indexOf('js/world_class_product_core.js') > index.indexOf('js/app.js'), 'World-class core should load after app.js so it can enhance rendered pages');
-assert(sw.includes('oos-v22-onboarding-auth-prompt-fix'), 'Service worker cache version must be bumped for the world-class core release');
+assert(sw.includes('oos-v24-no-observer-stability'), 'Service worker cache version must be bumped for the world-class core release');
 assert(sw.includes('./js/world_class_product_core.js'), 'Service worker must cache the world-class product core');
 assert(!fs.existsSync(path.join(root, 'Dockerfile')), 'Root Dockerfile must not exist; it can make DigitalOcean deploy the wrong component');
 assert(fs.existsSync(path.join(root, 'Dockerfile.frontend')), 'Frontend Dockerfile should remain renamed as Dockerfile.frontend');
@@ -156,7 +156,7 @@ assert(session.evaluate('e6').kind === 'correct-alt', 'Practice should accept pe
   assert(saasUi.includes('no injected Cloud Center card'), 'Cloud Center should not inject into player Settings');
   assert(backendSaas.includes('keep API only'), 'Backend/SaaS API should not inject admin Settings panel');
   assert(settingsRuntime.includes('Merged into the main Settings page'), 'Sharing/AI settings should not append a duplicate panel');
-  assert(css.includes('oos-v23-settings-games-repertoire-polish') || true, 'noop');
+  assert(css.includes('oos-v24-no-observer-stability') || true, 'noop');
   assert(css.includes('settings-clean-page'), 'Clean Settings CSS should exist');
   assert(css.includes('body[data-view="repertoire"] .rep-layout'), 'Repertoire overlap CSS should exist');
 }
