@@ -212,24 +212,23 @@
   }
 
   function installMutationEnhancer() {
-  window.addEventListener('hashchange', function () { scheduleEnhance(); });
-
-  window.addEventListener('resize', function () {
+    window.addEventListener('hashchange', () => scheduleEnhance());
+    window.addEventListener('resize', () => {
+      document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px');
+    }, { passive: true });
     document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px');
-  }, { passive: true });
 
-  document.documentElement.style.setProperty('--wc-vh', (window.innerHeight * 0.01) + 'px');
-
-  if (global.OOSApp && !global.OOSApp.__wcEnhanceGoHooked && typeof global.OOSApp.go === 'function') {
-    const oldGo = global.OOSApp.go.bind(global.OOSApp);
-    global.OOSApp.go = function wcGoPatched() {
-      const out = oldGo.apply(this, arguments);
-      scheduleEnhance();
-      return out;
-    };
-    global.OOSApp.__wcEnhanceGoHooked = true;
+    if (global.OOSApp && !global.OOSApp.__wcEnhanceGoHooked && typeof global.OOSApp.go === 'function') {
+      const oldGo = global.OOSApp.go.bind(global.OOSApp);
+      global.OOSApp.go = function wcGoPatched() {
+        const out = oldGo.apply(this, arguments);
+        scheduleEnhance();
+        return out;
+      };
+      global.OOSApp.__wcEnhanceGoHooked = true;
+    }
   }
-} function scheduleEnhance() {
+  function scheduleEnhance() {
     clearTimeout(enhancementTimer);
     const run = () => {
       if (enhancementBusy) return;

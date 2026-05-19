@@ -624,7 +624,9 @@
     installGlobalShortcuts();
     wrapViews();
     addBoardToolbars(document);
-    global.OOSPlayerRefresh = function () { wrapViews(); updateImportStatusNodes(); addBoardToolbars(document); }; setTimeout(global.OOSPlayerRefresh, 250); setTimeout(global.OOSPlayerRefresh, 1200);
+    global.OOSPlayerRefresh = function () { wrapViews(); updateImportStatusNodes(); addBoardToolbars(document); };
+    setTimeout(global.OOSPlayerRefresh, 250);
+    setTimeout(global.OOSPlayerRefresh, 1200);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

@@ -361,25 +361,58 @@
     const layout = el('div', { class: 'rep-layout' });
 
     // ---- Folder tree ---------------------------------------------------
-    const folders = el('aside', { class: 'rep-folders' });
+    const folders = el('aside', { class: 'rep-folders rep-folders-pro' });
+    folders.appendChild(el('div', { class: 'rep-folders-head' }, [
+      el('div', {}, [
+        el('div', { class: 'eyebrow' }, ['Opening folders']),
+        el('h3', {}, ['My preparation']),
+      ]),
+      el('button', { class: 'btn btn-sm', title: 'Create custom folder', on: { click: () => promptCreateFolder() } }, [icon(ICONS.add, 12), 'Folder']),
+    ]));
     DB.repertoires().forEach(rep => {
       const repLines = lines.filter(l => l.repId === rep.id);
-      const grp = el('div', { class: 'rep-folder-group' }, [
-        el('h4', {}, [rep.name]),
-        ...repLines.map(line => el('div', {
-          class: 'rep-line' + (line.id === repState.selectedLineId ? ' is-active' : ''),
+      const grp = el('div', { class: 'rep-folder-group' + (rep.custom ? ' is-custom' : ''), data: { folderId: rep.id } });
+      const folderActions = el('div', { class: 'rep-folder-actions' }, [
+        el('button', { class: 'btn btn-xs btn-ghost', title: 'Study this folder', on: { click: () => startFolderPractice(rep.id) } }, ['Study']),
+        el('button', { class: 'btn btn-xs btn-ghost', title: 'Export folder PGN', on: { click: () => exportFolderPgn(rep.id) } }, ['PGN']),
+        rep.custom ? el('button', { class: 'btn btn-xs btn-ghost', title: 'Rename folder', on: { click: () => promptRenameFolder(rep.id) } }, ['Rename']) : null,
+        rep.custom ? el('button', { class: 'btn btn-xs btn-ghost', title: 'Delete folder', on: { click: () => confirmDeleteFolder(rep.id) } }, ['Delete']) : null,
+      ].filter(Boolean));
+      grp.appendChild(el('div', { class: 'rep-folder-title' }, [
+        el('button', { class: 'rep-folder-name', on: { click: () => { if (repLines[0]) { repState.selectedLineId = repLines[0].id; repState.currentPly = 0; renderRepertoire(app); } } } }, [rep.name]),
+        el('span', { class: 'rep-folder-count' }, [String(repLines.length)]),
+      ]));
+      grp.appendChild(folderActions);
+      const list = el('div', { class: 'rep-folder-lines' });
+      if (!repLines.length) {
+        list.appendChild(el('div', { class: 'rep-empty-folder' }, ['No lines yet. Add or move a line here.']));
+      }
+      repLines.forEach(line => {
+        const dueCount = DB.positionsForLine(line.id).filter(p => { const s = DB.srs(p.id); return !s || new Date(s.dueAt || 0) <= new Date(); }).length;
+        list.appendChild(el('button', {
+          class: 'rep-line' + (line.id === repState.selectedLineId ? ' is-active' : '') + (line.parentLineId ? ' is-branch' : '') + (line.status === 'retired' ? ' is-retired' : ''),
+          data: { lineId: line.id },
+          title: line.name,
           on: { click: () => { repState.selectedLineId = line.id; repState.currentPly = 0; renderRepertoire(app); } },
         }, [
-          el('span', {}, [line.name, line.status === 'retired' ? ' · retired' : (line.parentLineId ? ' · branch' : '')]),
-          el('span', { class: 'count' }, [String(DB.positionsForLine(line.id).length)]),
-        ])),
-      ]);
+          el('span', { class: 'rep-line-name' }, [line.name]),
+          el('span', { class: 'rep-line-meta' }, [
+            line.status === 'retired' ? 'retired' : (line.parentLineId ? 'branch' : tagLabel(line.tag)),
+            ' · ', String(DB.positionsForLine(line.id).length), ' moves',
+            dueCount ? ' · ' + dueCount + ' due' : '',
+          ]),
+        ]));
+      });
+      grp.appendChild(list);
       folders.appendChild(grp);
     });
-    folders.appendChild(el('button', {
-      class: 'btn btn-sm', style: { width: '100%', marginTop: '12px' },
-      on: { click: () => global.OOSViews.showLineCreationWizard(() => global.OOSApp.go('repertoire')) },
-    }, [icon(ICONS.add, 12), 'Add line']));
+    folders.appendChild(el('div', { class: 'rep-folder-footer' }, [
+      el('button', {
+        class: 'btn btn-sm btn-primary',
+        on: { click: () => global.OOSViews.showLineCreationWizard(() => global.OOSApp.go('repertoire')) },
+      }, [icon(ICONS.add, 12), 'Add line']),
+      el('button', { class: 'btn btn-sm', on: { click: () => promptMoveLine(lineForMovePrompt()) } }, ['Move line']),
+    ]));
 
     // ---- Main editor ---------------------------------------------------
     const line = DB.line(repState.selectedLineId);
@@ -489,10 +522,22 @@
         })),
     ]);
     main.appendChild(positionsBar);
+    main.appendChild(buildVariationMap(line, repState.currentPly));
 
     // ---- Aside: notes / metadata --------------------------------------
-    const aside = el('aside', { class: 'rep-aside' });
-    aside.appendChild(el('div', { class: 'eyebrow', style: { marginBottom: '8px' } }, ['Notes']));
+    const notesDock = DB.getSetting ? DB.getSetting('notesDock', 'right') : 'right';
+    const aside = el('aside', { class: 'rep-aside notes-dock-' + notesDock });
+    aside.appendChild(el('div', { class: 'notes-pro-head' }, [
+      el('div', { class: 'notes-drag', title: notesDock === 'floating' ? 'Drag notes' : 'Notes dock' }, [
+        el('div', { class: 'eyebrow' }, ['Position notes']),
+        el('strong', {}, [card ? ('Move ' + card.ply) : 'Starting position']),
+      ]),
+      el('div', { class: 'notes-dock-controls' }, [
+        el('button', { class: 'btn btn-xs' + (notesDock === 'right' ? ' is-active' : ''), title: 'Dock right', on: { click: () => { DB.setSetting('notesDock', 'right'); renderRepertoire(app); } } }, ['Right']),
+        el('button', { class: 'btn btn-xs' + (notesDock === 'below' ? ' is-active' : ''), title: 'Move notes below', on: { click: () => { DB.setSetting('notesDock', 'below'); renderRepertoire(app); } } }, ['Below']),
+        el('button', { class: 'btn btn-xs' + (notesDock === 'floating' ? ' is-active' : ''), title: 'Float and drag notes', on: { click: () => { DB.setSetting('notesDock', 'floating'); renderRepertoire(app); } } }, ['Float']),
+      ]),
+    ]));
 
     const noteData = card ? DB.notesFor(card.id) : { type: 'idea', text: '', tags: [] };
 
@@ -614,6 +659,7 @@
     layout.appendChild(main);
     layout.appendChild(aside);
     app.appendChild(layout);
+    if (notesDock === 'floating') makeNotesPanelDraggable(aside);
 
     // Mount the board now that DOM is in place.
     const fenAtPly = computeFenAtPly(line, repState.currentPly);
@@ -633,6 +679,208 @@
       const next = Math.max(0, Math.min(line.moves.length, repState.currentPly + delta));
       if (next !== repState.currentPly) { repState.currentPly = next; renderRepertoire(app); }
     }
+  }
+
+
+  function lineForMovePrompt() {
+    return global.OOSData.line(repState.selectedLineId) || null;
+  }
+
+  function promptCreateFolder() {
+    const DB = global.OOSData;
+    const name = prompt('Create a folder for your opening prep:', 'Tournament prep');
+    if (!name || !name.trim()) return;
+    const color = confirm('Is this primarily a Black repertoire folder?\n\nOK = Black, Cancel = White') ? 'b' : 'w';
+    const folder = DB.addFolder && DB.addFolder(name.trim(), { color });
+    if (!folder) return global.OOSApp.toast('Could not create folder.', 'bad');
+    global.OOSApp.toast('Folder created.', 'good');
+    global.OOSApp.go('repertoire');
+  }
+
+  function promptRenameFolder(folderId) {
+    const DB = global.OOSData;
+    const folder = DB.repertoires().find(r => r.id === folderId);
+    if (!folder || !folder.custom) return;
+    const next = prompt('Rename folder:', folder.name);
+    if (!next || !next.trim()) return;
+    DB.updateFolder(folderId, { name: next.trim() });
+    global.OOSApp.toast('Folder renamed.', 'good');
+    global.OOSApp.go('repertoire');
+  }
+
+  function confirmDeleteFolder(folderId) {
+    const DB = global.OOSData;
+    const folder = DB.repertoires().find(r => r.id === folderId);
+    if (!folder || !folder.custom) return;
+    const count = DB.lines({ includeRetired: true }).filter(l => l.repId === folderId).length;
+    if (!confirm(`Delete folder "${folder.name}"? ${count} line${count === 1 ? '' : 's'} will move back to the default ${folder.color === 'b' ? 'Black' : 'White'} folder.`)) return;
+    DB.deleteFolder(folderId);
+    global.OOSApp.toast('Folder deleted. Lines were kept.', 'good');
+    global.OOSApp.go('repertoire');
+  }
+
+  function startFolderPractice(folderId) {
+    const DB = global.OOSData;
+    const cards = DB.lines().filter(l => l.repId === folderId).flatMap(l => DB.positionsForLine(l.id));
+    if (!cards.length) return global.OOSApp.toast('No trainable positions in this folder yet.', 'warn');
+    global.OOSViews.startSessionWith(cards, { mode: 'daily' });
+  }
+
+  function exportFolderPgn(folderId) {
+    const DB = global.OOSData;
+    const folder = DB.repertoires().find(r => r.id === folderId);
+    const lines = DB.lines({ includeRetired: true }).filter(l => l.repId === folderId);
+    if (!lines.length) return global.OOSApp.toast('This folder has no lines to export.', 'warn');
+    const pgn = lines.map(l => DB.exportLinePgn(l.id)).join('\n\n');
+    downloadLocalFile(safeFileName((folder && folder.name) || 'opening-folder') + '.pgn', pgn, 'application/x-chess-pgn');
+  }
+
+  function promptMoveLine(line) {
+    const DB = global.OOSData;
+    if (!line) return global.OOSApp.toast('Choose a line first.', 'warn');
+    const wrap = el('div', { class: 'modal' });
+    const back = el('div', { class: 'modal-back' });
+    const panel = el('div', { class: 'modal-panel folder-move-modal' });
+    const select = el('select', { class: 'input' }, DB.repertoires().map(rep => el('option', { value: rep.id, selected: rep.id === line.repId }, [rep.name])));
+    panel.appendChild(el('div', { class: 'eyebrow' }, ['Move line']));
+    panel.appendChild(el('h3', {}, [line.name]));
+    panel.appendChild(el('p', { class: 'muted', style: { margin: '8px 0 12px', fontSize: '13px' } }, ['Choose where this line should live. If the line is not editable, OpeningOS creates an editable copy first.']));
+    panel.appendChild(select);
+    panel.appendChild(el('div', { class: 'row', style: { marginTop: '14px', justifyContent: 'flex-end', gap: '8px' } }, [
+      el('button', { class: 'btn', on: { click: () => wrap.remove() } }, ['Cancel']),
+      el('button', { class: 'btn btn-primary', on: { click: () => {
+        const moved = DB.moveLineToFolder(line.id, select.value);
+        wrap.remove();
+        if (!moved) return global.OOSApp.toast('Could not move line.', 'bad');
+        global.OOSApp.toast('Line moved.', 'good');
+        global.OOSApp.go('repertoire', { lineId: moved.id });
+      } } }, ['Move']),
+    ]));
+    back.addEventListener('click', () => wrap.remove());
+    wrap.appendChild(back); wrap.appendChild(panel); document.body.appendChild(wrap);
+  }
+
+  function rootLineFor(line) {
+    const DB = global.OOSData;
+    let cur = line;
+    const seen = new Set();
+    while (cur && cur.parentLineId && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      cur = DB.line(cur.parentLineId) || cur;
+      if (!cur.parentLineId) break;
+    }
+    return cur || line;
+  }
+
+  function familyLines(rootId) {
+    const DB = global.OOSData;
+    const all = DB.lines({ includeRetired: true });
+    const out = [];
+    function walk(id, depth) {
+      all.filter(l => l.id === id || l.parentLineId === id).forEach(l => {
+        if (out.some(x => x.id === l.id)) return;
+        l.__depth = depth;
+        out.push(l);
+        walk(l.id, depth + 1);
+      });
+    }
+    walk(rootId, 0);
+    return out;
+  }
+
+  function buildVariationMap(line, currentPly) {
+    const DB = global.OOSData;
+    const root = rootLineFor(line);
+    const family = familyLines(root.id).sort((a, b) => (a.__depth || 0) - (b.__depth || 0) || (a.branchFromPly || 0) - (b.branchFromPly || 0));
+    const branches = family.filter(l => l.id !== root.id);
+    const panel = el('div', { class: 'panel rep-flow-map' });
+    panel.appendChild(el('div', { class: 'rep-flow-head' }, [
+      el('div', {}, [
+        el('div', { class: 'eyebrow' }, ['Variation tree']),
+        el('h3', {}, [root.name]),
+        el('p', { class: 'muted' }, ['See how branches split from your main line. Click any branch to open it on the board.']),
+      ]),
+      el('button', { class: 'btn btn-sm', on: { click: () => {
+        const moves = prompt('Add a side variation from the current position. Enter moves, e.g. ... c5 Nc3 Nc6');
+        if (!moves || !moves.trim()) return;
+        const branch = DB.addSideVariation(line.id, currentPly, moves.trim(), { name: line.name + ' — side variation' });
+        if (!branch) return global.OOSApp.toast('Could not create variation.', 'bad');
+        global.OOSApp.toast('Variation added.', 'good');
+        global.OOSApp.go('repertoire', { lineId: branch.id, ply: Math.max(1, currentPly + 1) });
+      } } }, ['Add branch here']),
+    ]));
+
+    const trunk = el('div', { class: 'flow-trunk', role: 'list', 'aria-label': 'Main line moves' });
+    (root.moves || []).forEach((mv, idx) => {
+      trunk.appendChild(el('button', {
+        class: 'flow-node' + (line.id === root.id && idx + 1 === currentPly ? ' is-current' : ''),
+        title: `Move ${idx + 1}: ${mv}`,
+        on: { click: () => global.OOSApp.go('repertoire', { lineId: root.id, ply: idx + 1 }) },
+      }, [
+        el('span', { class: 'flow-ply' }, [String(idx + 1)]),
+        el('span', { class: 'flow-san' }, [displayMove(mv)]),
+      ]));
+    });
+    panel.appendChild(trunk);
+
+    const branchWrap = el('div', { class: 'flow-branches' });
+    if (!branches.length) {
+      branchWrap.appendChild(el('div', { class: 'flow-empty' }, ['No branches yet. Add a side variation from any position to grow this tree.']));
+    }
+    branches.forEach(branch => {
+      const preview = (branch.moves || []).slice(Math.max(0, branch.branchFromPly || 0), Math.max(0, (branch.branchFromPly || 0) + 5)).map(displayMove).join(' ');
+      branchWrap.appendChild(el('div', { class: 'flow-branch-card' + (branch.id === line.id ? ' is-active' : '') + (branch.status === 'retired' ? ' is-retired' : ''), data: { lineId: branch.id } }, [
+        el('div', { class: 'flow-branch-line' }, [
+          el('span', { class: 'flow-split' }, [`after ${branch.branchFromPly || 0}`]),
+          el('strong', {}, [branch.name]),
+        ]),
+        el('div', { class: 'flow-preview' }, [preview || 'Continuation branch']),
+        el('div', { class: 'row flow-actions', style: { gap: '6px', flexWrap: 'wrap' } }, [
+          el('button', { class: 'btn btn-xs btn-primary', on: { click: () => global.OOSApp.go('repertoire', { lineId: branch.id, ply: branch.branchFromPly || 0 }) } }, ['View']),
+          el('button', { class: 'btn btn-xs', on: { click: () => promptMoveLine(branch) } }, ['Move']),
+          (DB.isUserLine && DB.isUserLine(branch.id)) ? el('button', { class: 'btn btn-xs', on: { click: () => showLineCreationWizard(() => global.OOSApp.go('repertoire', { lineId: branch.id }), branch) } }, ['Edit']) : null,
+          (DB.isUserLine && DB.isUserLine(branch.id)) ? el('button', { class: 'btn btn-xs btn-ghost', on: { click: () => { if (confirm('Delete this branch?')) { DB.deleteUserLine(branch.id); global.OOSApp.toast('Branch deleted.', 'good'); global.OOSApp.go('repertoire', { lineId: root.id }); } } } }, ['Delete']) : null,
+        ].filter(Boolean)),
+      ]));
+    });
+    panel.appendChild(branchWrap);
+    return panel;
+  }
+
+
+  function makeNotesPanelDraggable(aside) {
+    if (!aside) return;
+    const handle = aside.querySelector('.notes-drag') || aside;
+    const DB = global.OOSData;
+    const saved = DB.getSetting ? DB.getSetting('notesFloatPos', null) : null;
+    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
+      aside.style.left = Math.max(8, Math.min(window.innerWidth - 340, saved.x)) + 'px';
+      aside.style.top = Math.max(70, Math.min(window.innerHeight - 160, saved.y)) + 'px';
+    }
+    handle.addEventListener('pointerdown', ev => {
+      if (ev.button !== 0) return;
+      aside.classList.add('is-dragging');
+      const rect = aside.getBoundingClientRect();
+      const dx = ev.clientX - rect.left;
+      const dy = ev.clientY - rect.top;
+      handle.setPointerCapture && handle.setPointerCapture(ev.pointerId);
+      function move(e) {
+        const x = Math.max(8, Math.min(window.innerWidth - Math.min(320, aside.offsetWidth), e.clientX - dx));
+        const y = Math.max(64, Math.min(window.innerHeight - 120, e.clientY - dy));
+        aside.style.left = x + 'px';
+        aside.style.top = y + 'px';
+      }
+      function up(e) {
+        aside.classList.remove('is-dragging');
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        const r = aside.getBoundingClientRect();
+        if (DB.setSetting) DB.setSetting('notesFloatPos', { x: Math.round(r.left), y: Math.round(r.top) });
+        try { handle.releasePointerCapture && handle.releasePointerCapture(ev.pointerId); } catch (_) {}
+      }
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up, { once: true });
+    });
   }
 
   function tagLabel(t) {

@@ -336,7 +336,9 @@
       { label: 'Settings / backup',   desc: 'Theme, cloud sync, safety tools',  run: () => go('settings') },
       { label: 'Reliability center',  desc: 'Backup, share packs, readiness',  run: () => global.OOSLaunch ? global.OOSLaunch.showReliabilityCenter() : (global.OOSViews.showDataSafetyCenter ? global.OOSViews.showDataSafetyCenter() : go('settings')) },
     ];
-    panel.innerHTML = '<div class="bs-handle"></div><h3 style="margin-bottom:4px">Quick actions</h3><p class="muted" style="font-size:12px;margin:0 0 12px">Everything important is reachable in two taps.</p>';
+    panel.innerHTML = '<div class="bs-handle"></div><div class="bs-head"><div><h3>Quick actions</h3><p class="muted">Everything important is reachable in two taps.</p></div><button type="button" class="bs-close" aria-label="Close menu">×</button></div>';
+    const closeBtn = panel.querySelector('.bs-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeBottomSheet);
     items.forEach(it => {
       const b = document.createElement('button');
       b.className = 'bs-item';

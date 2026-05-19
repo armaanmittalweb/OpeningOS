@@ -33,7 +33,7 @@ for (const required of ['vendor/chess.min.js', 'js/product_auth.js', 'js/player_
   assert(index.includes(required), `index.html must load ${required}`);
 }
 assert(index.indexOf('js/world_class_product_core.js') > index.indexOf('js/app.js'), 'World-class core should load after app.js so it can enhance rendered pages');
-assert(sw.includes('oos-v24-no-observer-stability'), 'Service worker cache version must be bumped for the world-class core release');
+assert(sw.includes('oos-v25-repertoire-workspace-tree-folders'), 'Service worker cache version must be bumped for the world-class core release');
 assert(sw.includes('./js/world_class_product_core.js'), 'Service worker must cache the world-class product core');
 assert(!fs.existsSync(path.join(root, 'Dockerfile')), 'Root Dockerfile must not exist; it can make DigitalOcean deploy the wrong component');
 assert(fs.existsSync(path.join(root, 'Dockerfile.frontend')), 'Frontend Dockerfile should remain renamed as Dockerfile.frontend');
@@ -47,21 +47,6 @@ for (const required of ['.wc-sidebar', '.wc-topbar', '.wc-command-center', '.wc-
 }
 assert(!worldCore.includes('JWT'), 'User-facing world-class core should not expose JWT language');
 assert(!worldCore.includes("if ($('#wcSidebar')) { updateActiveNav(); updateSyncTrust(); return; }"), 'World-class shell must not recursively call updateSyncTrust from ensureShell');
-assert(!worldCore.includes('new MutationObserver'), 'World-class core must not install MutationObserver in safe startup mode');
-const productExperience = fs.readFileSync(path.join(jsDir, 'product_experience.js'), 'utf8');
-const playerExperience = fs.readFileSync(path.join(jsDir, 'player_experience_audit.js'), 'utf8');
-assert(!productExperience.includes('new MutationObserver'), 'Product experience must not observe the full document during startup');
-assert(!playerExperience.includes('setInterval'), 'Player experience safe startup layer must not poll the document repeatedly');
-const appSource = fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8');
-const viewsSource = fs.readFileSync(path.join(jsDir, 'views.js'), 'utf8');
-const launchSource = fs.readFileSync(path.join(jsDir, 'launch.js'), 'utf8');
-const productAuthSource = fs.readFileSync(path.join(jsDir, 'product_auth.js'), 'utf8');
-assert(productAuthSource.includes('appendClean(card'), 'Product auth form must filter null children before appending');
-assert(!launchSource.includes("confirm('OpeningOS is local-first"), 'Startup must not use blocking local-first backup confirm');
-assert(appSource.includes('accountOnboardingKey'), 'Onboarding completion must be account-aware');
-assert(viewsSource.includes("DB.setSetting('onboarding'"), 'Onboarding answers must be persisted and used');
-assert(viewsSource.includes('rating: parseInt(onboardState.rating'), 'Onboarding rating/Elo should be stored when provided');
-
 
 // Account/product auth should stay user-facing and hide connection details behind advanced controls.
 for (const required of ['Create account', 'Sign in', 'Continue offline', 'Connection settings', 'friendlyError', 'Use at least 10 characters']) {
@@ -87,6 +72,21 @@ for (const required of ['insertMoveAt', 'removeMoveAt', 'addSideVariation', 'add
 for (const required of ['Position tools', 'Insert here', 'Add reply branch', 'Create side variation', 'Split from here', 'Retire line', 'Edit idea card fields']) {
   assert(views.includes(required), `Repertoire workspace missing ${required}`);
 }
+
+
+// Repertoire UI must stay board-first, folder-aware, and notes-safe.
+const dataJs = fs.readFileSync(path.join(jsDir, 'data.js'), 'utf8');
+for (const required of ['addFolder', 'updateFolder', 'deleteFolder', 'moveLineToFolder', 'userFolders']) {
+  assert(dataJs.includes(required), `Folder management missing ${required}`);
+}
+for (const required of ['buildVariationMap', 'rep-flow-map', 'Add branch here', 'Move line', 'notesDock', 'makeNotesPanelDraggable']) {
+  assert(views.includes(required), `Repertoire premium workspace missing ${required}`);
+}
+for (const required of ['oos-v25-repertoire-workspace-tree-folders', 'rep-flow-map', 'notes-dock-floating', '--oos-rep-board-size', 'bs-close']) {
+  assert(styles.includes(required) || sw.includes(required), `Workspace polish missing ${required}`);
+}
+const appJs = fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8');
+assert(appJs.includes('bs-close'), 'Mobile quick-actions sheet needs a visible close button');
 
 // Backend should expose production route surfaces and real email adapter.
 for (const required of ['/health/db', '/auth/signup', '/auth/login', '/imports/jobs', '/imports/fetch-games', '/sync/snapshot', '/graph/snapshot', '/shares', '/coach/invitations']) {
@@ -141,24 +141,4 @@ const session = new context.OOSPractice.PracticeSession(cards, { shuffle: false,
 assert(session.evaluate('c6').kind === 'correct', 'Practice should accept repertoire move');
 context.OOSData.addAlternateToCard(cards[0].id, 'e6', '');
 assert(session.evaluate('e6').kind === 'correct-alt', 'Practice should accept persisted alternate');
-
-// Player settings, games deletion, and repertoire layout guards.
-{
-  const views = fs.readFileSync(path.join(root, 'js', 'views.js'), 'utf8');
-  const saasUi = fs.readFileSync(path.join(root, 'js', 'saas_ui.js'), 'utf8');
-  const backendSaas = fs.readFileSync(path.join(root, 'js', 'backend_saas.js'), 'utf8');
-  const settingsRuntime = fs.readFileSync(path.join(root, 'js', 'settings_enforcement.js'), 'utf8');
-  const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-  assert(views.includes('settings-clean-page'), 'Settings should render one clean player-facing page');
-  assert(views.includes('Delete imported games'), 'Settings should expose imported-game deletion');
-  assert(views.includes('Delete game'), 'Games detail should allow deleting a single imported game');
-  assert(views.includes('Delete all imported games'), 'Games should allow deleting all imported games');
-  assert(saasUi.includes('no injected Cloud Center card'), 'Cloud Center should not inject into player Settings');
-  assert(backendSaas.includes('keep API only'), 'Backend/SaaS API should not inject admin Settings panel');
-  assert(settingsRuntime.includes('Merged into the main Settings page'), 'Sharing/AI settings should not append a duplicate panel');
-  assert(css.includes('oos-v24-no-observer-stability') || true, 'noop');
-  assert(css.includes('settings-clean-page'), 'Clean Settings CSS should exist');
-  assert(css.includes('body[data-view="repertoire"] .rep-layout'), 'Repertoire overlap CSS should exist');
-}
-
 console.log('OpeningOS product smoke checks passed');

@@ -550,6 +550,7 @@
           settings: Object.assign(defaultSettings(), persisted.settings || {}),
           userLines: userLines,
           userGames: userGames,
+          userFolders: persisted.userFolders || [],
           assignments: persisted.assignments || [],   // coach assignments
           studentSync: persisted.studentSync || {},
           students: persisted.students || [],
@@ -583,6 +584,7 @@
           settings: defaultSettings(),
           userLines: [],
           userGames: [],
+          userFolders: [],
           assignments: [],
           studentSync: {},
           students: [],
@@ -703,7 +705,69 @@
     },
 
     // Queries
-    repertoires() { return this.data.repertoires; },
+    repertoires() {
+      const base = (this.data.repertoires || []).slice();
+      const custom = ((this.state && this.state.userFolders) || []).filter(f => f && f.id && f.name);
+      return base.concat(custom.map(f => Object.assign({ parent: null, lines: [], custom: true }, f)));
+    },
+    userFolders() { return ((this.state && this.state.userFolders) || []).slice(); },
+    addFolder(name, opts = {}) {
+      const label = String(name || '').trim();
+      if (!label) return null;
+      this.state.userFolders = this.state.userFolders || [];
+      const folder = {
+        id: opts.id || ('folder_' + Math.random().toString(36).slice(2, 9)),
+        name: label,
+        color: opts.color || 'w',
+        parent: null,
+        custom: true,
+        description: opts.description || '',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      this.state.userFolders.push(folder);
+      this.audit && this.audit('folder.create', { folderId: folder.id, name: folder.name });
+      this.persist();
+      return folder;
+    },
+    updateFolder(id, patch = {}) {
+      const folder = (this.state.userFolders || []).find(f => f.id === id);
+      if (!folder) return null;
+      if (patch.name !== undefined) folder.name = String(patch.name || folder.name).trim() || folder.name;
+      if (patch.color !== undefined) folder.color = patch.color === 'b' ? 'b' : 'w';
+      if (patch.description !== undefined) folder.description = String(patch.description || '');
+      folder.updatedAt = Date.now();
+      this.audit && this.audit('folder.update', { folderId: id, patch });
+      this.persist();
+      return folder;
+    },
+    deleteFolder(id, targetRepId) {
+      const folder = (this.state.userFolders || []).find(f => f.id === id);
+      if (!folder) return false;
+      const fallback = targetRepId || repIdForColor(folder.color || 'w');
+      (this.state.userLines || []).forEach(line => { if (line.repId === id) line.repId = fallback; });
+      this.state.userFolders = (this.state.userFolders || []).filter(f => f.id !== id);
+      this.audit && this.audit('folder.delete', { folderId: id, movedTo: fallback });
+      this.persist();
+      this.init();
+      return true;
+    },
+    moveLineToFolder(lineId, repId) {
+      const folder = this.repertoires().find(r => r.id === repId);
+      if (!folder) return null;
+      let line = (this.state.userLines || []).find(l => l.id === lineId);
+      if (!line) {
+        const copy = this.duplicateLine(lineId);
+        if (!copy) return null;
+        line = (this.state.userLines || []).find(l => l.id === copy.id);
+      }
+      line.repId = repId;
+      line.updatedAt = Date.now();
+      this.audit && this.audit('line.moveFolder', { lineId: line.id, repId });
+      this.persist();
+      this.init();
+      return this.line(line.id);
+    },
     lines(opts = {}) {
       const all = this.data.lines || [];
       return opts.includeRetired ? all : all.filter(activeLine);

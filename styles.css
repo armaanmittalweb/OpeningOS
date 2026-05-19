@@ -5693,3 +5693,449 @@ body[data-view="repertoire"] .move-tree, body[data-view="repertoire"] .idea-card
   body[data-view="repertoire"] .rep-folders { display: none !important; }
   body[data-view="repertoire"] .rep-aside { grid-column: auto !important; }
 }
+
+/* --------------------------------------------------------------------------
+   Repertoire workspace professional UI pass — May 2026
+   Board-first layout, movable notes, folder management, variation map, mobile menu.
+   -------------------------------------------------------------------------- */
+:root {
+  --oos-rep-board-size: 720px;
+  --oos-rep-sidebar: 284px;
+  --oos-rep-notes: 360px;
+}
+body[data-view="repertoire"] #app {
+  max-width: 1760px;
+  margin-inline: auto;
+}
+body[data-view="repertoire"] .rep-layout {
+  display: grid !important;
+  grid-template-columns: minmax(232px, var(--oos-rep-sidebar)) minmax(0, 1fr) minmax(310px, var(--oos-rep-notes)) !important;
+  gap: 20px !important;
+  align-items: start !important;
+  overflow: visible !important;
+}
+body[data-view="repertoire"] .rep-main {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+body[data-view="repertoire"] .editor-grid {
+  display: grid !important;
+  grid-template-columns: minmax(520px, 0.95fr) minmax(300px, 0.62fr) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+body[data-view="repertoire"] .editor-grid > .stack:first-child {
+  align-items: center;
+  min-width: 0;
+}
+body[data-view="repertoire"] .editor-grid .chess-board.full,
+body[data-view="repertoire"] .chess-board.full {
+  width: min(100%, var(--oos-rep-board-size)) !important;
+  max-width: min(100%, var(--oos-rep-board-size)) !important;
+  min-width: min(460px, 100%) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.32), 0 0 0 1px rgba(255,255,255,.06) !important;
+}
+body[data-view="repertoire"] .board-actions {
+  width: min(100%, var(--oos-rep-board-size));
+  margin-inline: auto;
+  justify-content: center;
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--bg-1) 92%, transparent);
+  border: 1px solid var(--line);
+  padding: 10px;
+}
+.cb-coord {
+  font-size: 3.05px !important;
+  font-weight: 800 !important;
+  opacity: .88 !important;
+  paint-order: stroke !important;
+  stroke: rgba(0,0,0,.24) !important;
+  stroke-width: .22px !important;
+  letter-spacing: -.02em;
+}
+.cb-file-coord { transform: translateY(-.05px); }
+.cb-rank-coord { transform: translateX(.05px); }
+
+/* Folder sidebar */
+.rep-folders-pro {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bg-1) 94%, transparent), color-mix(in oklab, var(--bg-0) 94%, transparent));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 14px;
+  max-height: calc(100dvh - var(--nav-h, 64px) - 34px);
+  overflow: auto;
+  position: sticky;
+  top: calc(var(--nav-h, 64px) + 16px);
+}
+.rep-folders-head,
+.rep-folder-title,
+.rep-flow-head,
+.notes-pro-head,
+.bs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rep-folders-head h3,
+.rep-flow-head h3,
+.bs-head h3 {
+  margin: 3px 0 0;
+}
+.rep-folder-group {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--bg-2) 82%, transparent);
+}
+.rep-folder-group.is-custom {
+  border-color: color-mix(in oklab, var(--accent) 38%, var(--line));
+}
+.rep-folder-name {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--text-0);
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+.rep-folder-count {
+  min-width: 26px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--bg-3);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+.rep-folder-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0 10px;
+}
+.rep-folder-lines {
+  display: grid;
+  gap: 6px;
+}
+.rep-line {
+  width: 100%;
+  display: grid !important;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  padding: 10px 11px;
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+}
+.rep-line:hover { background: var(--bg-3); color: var(--text-0); }
+.rep-line.is-active {
+  border-color: color-mix(in oklab, var(--accent) 56%, var(--line));
+  background: color-mix(in oklab, var(--accent) 14%, var(--bg-2));
+  color: var(--text-0);
+}
+.rep-line.is-branch .rep-line-name::before { content: '↳ '; color: var(--accent); }
+.rep-line.is-retired { opacity: .62; }
+.rep-line-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.rep-line-meta {
+  color: var(--text-3);
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rep-empty-folder {
+  color: var(--text-3);
+  font-size: 12px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+.rep-folder-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* Notes: docked, below, or draggable floating */
+.rep-aside {
+  min-width: 0;
+  overflow: auto;
+  max-height: calc(100dvh - var(--nav-h, 64px) - 34px);
+  position: sticky;
+  top: calc(var(--nav-h, 64px) + 16px);
+  z-index: 5;
+  border-radius: 20px !important;
+  border: 1px solid var(--line) !important;
+  background: color-mix(in oklab, var(--bg-1) 96%, transparent) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.24) !important;
+}
+.notes-pro-head {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.notes-drag {
+  flex: 1;
+  min-width: 0;
+}
+.notes-drag strong {
+  display: block;
+  color: var(--text-0);
+  margin-top: 2px;
+}
+.notes-dock-controls {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.notes-dock-controls .btn.is-active {
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
+  color: var(--accent);
+}
+.rep-aside.notes-dock-below {
+  grid-column: 1 / -1;
+  position: static !important;
+  max-height: none;
+}
+.rep-aside.notes-dock-floating {
+  position: fixed !important;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(72dvh, 680px);
+  left: max(12px, calc(100vw - 410px));
+  top: calc(var(--nav-h, 64px) + 20px);
+  z-index: 74;
+  resize: both;
+  min-width: 280px;
+  min-height: 260px;
+}
+.rep-aside.notes-dock-floating .notes-drag {
+  cursor: grab;
+}
+.rep-aside.notes-dock-floating.is-dragging .notes-drag {
+  cursor: grabbing;
+}
+.rep-aside textarea.input {
+  min-height: 180px;
+  resize: vertical;
+}
+
+/* Variation map */
+.rep-flow-map {
+  margin-top: 18px;
+  padding: 16px;
+  overflow: hidden;
+}
+.rep-flow-head p { margin: 4px 0 0; font-size: 12.5px; }
+.flow-trunk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 16px 4px 12px;
+  scrollbar-width: thin;
+}
+.flow-node {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 68px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text-1);
+  padding: 8px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.flow-node::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  width: 10px;
+  height: 2px;
+  background: var(--line-2);
+}
+.flow-node:last-child::after { display: none; }
+.flow-node:hover,
+.flow-node.is-current {
+  border-color: color-mix(in oklab, var(--accent) 58%, var(--line));
+  background: color-mix(in oklab, var(--accent) 14%, var(--bg-2));
+  color: var(--text-0);
+}
+.flow-ply {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.flow-san { font-weight: 750; }
+.flow-branches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.flow-branch-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: color-mix(in oklab, var(--bg-2) 86%, transparent);
+}
+.flow-branch-card.is-active {
+  border-color: color-mix(in oklab, var(--accent) 62%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
+}
+.flow-branch-card.is-retired { opacity: .62; }
+.flow-branch-line {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.flow-split {
+  justify-self: start;
+  border-radius: 999px;
+  background: var(--bg-3);
+  color: var(--text-2);
+  font-size: 11px;
+  padding: 4px 8px;
+}
+.flow-preview {
+  min-height: 22px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.flow-empty {
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--text-3);
+  background: var(--bg-2);
+}
+
+/* Mobile quick-actions sheet must be readable and closable. */
+.bottom-sheet-panel {
+  background: color-mix(in oklab, var(--bg-1) 98%, #000 2%) !important;
+  color: var(--text-0) !important;
+  border: 1px solid var(--line-2) !important;
+  border-bottom: 0 !important;
+  max-height: min(84dvh, 720px) !important;
+  overflow: auto !important;
+}
+.bs-head {
+  margin-bottom: 12px;
+}
+.bs-head h3 { margin: 0 0 3px; }
+.bs-head p { margin: 0; font-size: 12px; color: var(--text-2); }
+.bs-close {
+  appearance: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-3);
+  color: var(--text-0);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.bs-close:hover { background: var(--accent-soft); color: var(--accent); }
+.bs-item {
+  background: color-mix(in oklab, var(--bg-2) 94%, transparent) !important;
+  color: var(--text-0) !important;
+  border: 1px solid var(--line) !important;
+}
+.bs-item:hover,
+.bs-item:focus-visible {
+  border-color: color-mix(in oklab, var(--accent) 56%, var(--line)) !important;
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-2)) !important;
+  outline: none;
+}
+.bs-name { color: var(--text-0); font-weight: 800; }
+.bs-desc { color: var(--text-2); }
+
+@media (max-width: 1380px) {
+  body[data-view="repertoire"] .rep-layout {
+    grid-template-columns: minmax(220px, 268px) minmax(0, 1fr) !important;
+  }
+  body[data-view="repertoire"] .rep-aside:not(.notes-dock-floating):not(.notes-dock-right) {
+    grid-column: 1 / -1;
+  }
+  body[data-view="repertoire"] .rep-aside.notes-dock-right {
+    grid-column: 1 / -1;
+    position: static !important;
+    max-height: none;
+  }
+}
+@media (max-width: 1120px) {
+  body[data-view="repertoire"] .editor-grid {
+    grid-template-columns: 1fr !important;
+  }
+  body[data-view="repertoire"] .editor-grid .chess-board.full,
+  body[data-view="repertoire"] .chess-board.full {
+    width: min(100%, 680px) !important;
+    min-width: 0 !important;
+  }
+}
+@media (max-width: 860px) {
+  body[data-view="repertoire"] .rep-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .rep-folders-pro {
+    position: static;
+    max-height: none;
+  }
+  .rep-folder-footer { grid-template-columns: 1fr; }
+  .rep-aside,
+  .rep-aside.notes-dock-right,
+  .rep-aside.notes-dock-below {
+    position: static !important;
+    grid-column: 1 / -1;
+    max-height: none;
+  }
+  .rep-aside.notes-dock-floating {
+    left: 12px !important;
+    top: calc(var(--nav-h, 64px) + 8px) !important;
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - var(--nav-h, 64px) - 110px);
+  }
+  .rep-flow-head,
+  .notes-pro-head,
+  .bs-head { align-items: stretch; }
+  .flow-branches { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  body[data-view="repertoire"] .editor-grid .chess-board.full,
+  body[data-view="repertoire"] .chess-board.full {
+    width: min(100%, calc(100vw - 28px)) !important;
+  }
+  .flow-trunk { gap: 6px; }
+  .flow-node { min-width: auto; padding: 7px 9px; }
+  .notes-dock-controls .btn { flex: 1 1 30%; }
+}

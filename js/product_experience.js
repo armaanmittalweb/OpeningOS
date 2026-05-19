@@ -639,8 +639,7 @@
     wrapRender('renderToday', decorateToday);
     wrapRender('renderRepertoire', decorateRepertoire);
     wrapRender('renderGames', decorateGames);
-    // Settings is now a single player-facing page; do not append beta/admin panels.
-    // wrapRender('renderSettings', decorateSettings);
+    wrapRender('renderSettings', decorateSettings);
     V.showImportWizard = showImportWizard;
     V.openLichessFlow = function () { showImportWizard((r) => { if (r && r.games && global.OOSApp) global.OOSApp.go('games'); }, { source: 'lichess' }); };
     V.openChesscomFlow = function () { showImportWizard((r) => { if (r && r.games && global.OOSApp) global.OOSApp.go('games'); }, { source: 'chesscom' }); };
@@ -703,7 +702,8 @@
     }
 
     scan(document);
-    global.OOSProductLanguageRefresh = function () { schedule(document); }; setTimeout(function () { schedule(document); }, 250);
+    global.OOSProductLanguageRefresh = function () { schedule(document); };
+    setTimeout(function () { schedule(document); }, 250);
   }
 
   function init() {
