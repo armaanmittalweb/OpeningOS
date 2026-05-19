@@ -73,7 +73,10 @@
     installKeyboard();
     installMutationEnhancer();
     scheduleEnhance();
-    setInterval(updateSyncTrust, 15_000);
+    setTimeout(updateSyncTrust, 1500);
+    window.addEventListener('focus', () => updateSyncTrust(), { passive: true });
+    window.addEventListener('online', () => updateSyncTrust(), { passive: true });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) updateSyncTrust(); });
   }
 
   function ensureShell() {
@@ -320,51 +323,29 @@
 
   function enhanceRepertoire() {
     const layout = $('.rep-layout');
-    if (!layout || layout.classList.contains('wc-enhanced-repertoire')) return;
-    layout.classList.add('wc-enhanced-repertoire');
+    if (!layout) return;
+    layout.classList.add('wc-repertoire-stable');
+
     const DB = global.OOSData;
-    const active = activeLine();
-    const header = el('section', { class: 'wc-rep-command' }, [
-      el('div', {}, [el('div', { class: 'eyebrow', text: 'Repertoire workspace' }), el('h1', { text: active ? active.name : 'Build your openings' }), el('p', { text: 'Board, move list, idea card, and repair actions stay together so you can prepare without hunting through menus.' })]),
-      el('div', { class: 'wc-rep-actions' }, [
-        el('input', { id: 'wcLineSearch', class: 'input', placeholder: 'Search openings or lines…', on: { input: e => filterLines(e.target.value) } }),
-        el('button', { class: 'btn btn-primary', on: { click: () => clickByText('Practice from here') || clickByText('Practice line') || go('practice') } }, ['Practice from here']),
-        el('button', { class: 'btn', on: { click: openPositionCommandMenu } }, ['Position actions'])
-      ])
-    ]);
-    layout.parentElement.insertBefore(header, layout);
-
-    const filters = el('div', { class: 'wc-line-filters' }, ['All','Due','Weak','Critical','Branches','Retired'].map(label => el('button', { type: 'button', class: label === 'All' ? 'is-active' : '', on: { click: (e) => { $all('.wc-line-filters button').forEach(b => b.classList.remove('is-active')); e.currentTarget.classList.add('is-active'); filterLines($('#wcLineSearch') ? $('#wcLineSearch').value : '', label.toLowerCase()); } } }, [label])));
     const folders = $('.rep-folders');
-    if (folders) folders.insertBefore(filters, folders.firstChild);
-
-    const boardHost = $('.board-wrap') || $('.chess-board') || $('.board-panel');
-    if (boardHost && !$('.wc-board-toolbar', boardHost.parentElement)) {
-      const toolbar = el('div', { class: 'wc-board-toolbar', role: 'toolbar', 'aria-label': 'Board controls' }, [
-        el('button', { class: 'btn btn-sm', on: { click: () => clickByText('Flip') } }, ['Flip board']),
-        el('button', { class: 'btn btn-sm', on: { click: () => document.body.classList.toggle('wc-board-focus') } }, ['Focus board']),
-        el('button', { class: 'btn btn-sm', on: { click: () => setBoardSize('compact') } }, ['Compact']),
-        el('button', { class: 'btn btn-sm', on: { click: () => setBoardSize('comfort') } }, ['Comfort']),
-        el('button', { class: 'btn btn-sm', on: { click: () => setBoardSize('analysis') } }, ['Analysis'])
-      ]);
-      boardHost.parentElement.insertBefore(toolbar, boardHost);
+    if (folders && !$('.wc-line-filters', folders)) {
+      const filters = el('div', { class: 'wc-line-filters compact-line-filters', 'aria-label': 'Filter repertoire lines' },
+        ['All','Due','Weak','Critical','Branches','Retired'].map(label => el('button', {
+          type: 'button',
+          class: label === 'All' ? 'is-active' : '',
+          on: { click: (e) => {
+            $all('.wc-line-filters button').forEach(b => b.classList.remove('is-active'));
+            e.currentTarget.classList.add('is-active');
+            filterLines('', label.toLowerCase());
+          } }
+        }, [label]))
+      );
+      folders.insertBefore(filters, folders.firstChild);
     }
 
-    const dock = el('div', { class: 'wc-position-dock' }, [
-      posAction('Practice', () => clickByText('Practice from here') || go('practice')),
-      posAction('Reply', () => focusPlaceholder('Opponent reply from here')),
-      posAction('Variation', () => focusPlaceholder('Side variation moves')),
-      posAction('Critical', () => clickByText('Mark critical') || clickByText('✓ Critical')),
-      posAction('Idea', () => openIdeaEditor()),
-      posAction('Split', () => clickByText('Split from here')),
-      posAction('Retire', () => clickByText('Retire line') || clickByText('Restore line')),
-      posAction('Transpositions', () => scrollToText('Also occurs in') || scrollToText('Transposition options'))
-    ]);
-    const right = $('.move-tree') ? $('.move-tree').parentElement : null;
-    if (right && !$('.wc-position-dock', right)) right.insertBefore(dock, right.firstChild);
-
-    const lines = safeArray(() => DB.lines({ includeRetired: true }));
+    const lines = safeArray(() => DB && DB.lines ? DB.lines({ includeRetired: true }) : []);
     $all('.rep-line').forEach(node => {
+      if (node.dataset.wcStableLine === '1') return;
       const name = node.textContent || '';
       const line = lines.find(l => name.includes(l.name));
       if (line) {
@@ -373,20 +354,26 @@
         if (line.status === 'retired' || line.retired) pills.appendChild(el('small', { text: 'retired' }));
         const count = safeArray(() => DB.positionsForLine(line.id)).length;
         if (count) pills.appendChild(el('small', { text: count + ' cards' }));
-        if (!node.querySelector('.wc-line-pills')) node.appendChild(pills);
-        node.tabIndex = 0;
-        node.setAttribute('role', 'button');
-        if (node.dataset.wcLineKeyboard !== '1') {
-          node.dataset.wcLineKeyboard = '1';
-          node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); } });
-        }
+        node.appendChild(pills);
       }
+      node.tabIndex = 0;
+      node.setAttribute('role', 'button');
+      node.dataset.wcStableLine = '1';
+      node.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); }
+      });
     });
   }
   function posAction(label, fn) { return el('button', { type: 'button', on: { click: fn } }, [label]); }
   function setBoardSize(size) {
     document.documentElement.setAttribute('data-board-size', size);
-    try { global.OOSData && global.OOSData.setSetting && global.OOSData.setSetting('boardSize', size); } catch (_) {}
+    document.documentElement.setAttribute('data-rep-board-size', size);
+    try {
+      if (global.OOSData && global.OOSData.setSetting) {
+        global.OOSData.setSetting('boardSize', size);
+        global.OOSData.setSetting('repBoardSize', size);
+      }
+    } catch (_) {}
     toast('Board size: ' + size, 'good');
   }
   function activeLine() {
@@ -684,7 +671,7 @@
       if (e.altKey && /^[1-8]$/.test(e.key)) { e.preventDefault(); const item = NAV[Number(e.key) - 1]; if (item) go(item.id); }
       if (appView() === 'repertoire') {
         if (e.key === 'f' || e.key === 'F') { e.preventDefault(); clickByText('Flip board'); }
-        if (e.key === 'b' || e.key === 'B') { e.preventDefault(); document.body.classList.toggle('wc-board-focus'); }
+        if (e.key === 'b' || e.key === 'B') { e.preventDefault(); document.body.classList.toggle('rep-board-focus'); }
         if (e.key === 'p' || e.key === 'P') { e.preventDefault(); clickByText('Practice from here'); }
         if (e.key === 'a' || e.key === 'A') { e.preventDefault(); openPositionCommandMenu(); }
       }

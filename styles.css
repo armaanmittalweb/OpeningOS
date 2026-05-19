@@ -6139,3 +6139,478 @@ body[data-view="repertoire"] .board-actions {
   .flow-node { min-width: auto; padding: 7px 9px; }
   .notes-dock-controls .btn { flex: 1 1 30%; }
 }
+
+
+/* 2026-05-19 Repertoire workspace stability rebuild -----------------------
+   Board-first, no overlap with product sidebar, no duplicate toolbars. */
+:root {
+  --oos-rep-board-size: clamp(620px, 46vw, 760px);
+  --oos-rep-left: clamp(240px, 18vw, 310px);
+  --oos-rep-gap: 24px;
+}
+html[data-rep-board-size="compact"], html[data-board-size="compact"] { --oos-rep-board-size: clamp(520px, 40vw, 600px); }
+html[data-rep-board-size="comfort"], html[data-board-size="comfort"], html[data-board-size="medium"] { --oos-rep-board-size: clamp(620px, 46vw, 720px); }
+html[data-rep-board-size="analysis"], html[data-board-size="analysis"] { --oos-rep-board-size: min(82vh, 820px); }
+
+body.wc-shell-enabled #wcTopbar {
+  margin-left: 0 !important;
+  left: var(--wc-sidebar-w) !important;
+  width: calc(100vw - var(--wc-sidebar-w)) !important;
+  box-sizing: border-box !important;
+}
+body.wc-shell-enabled #app {
+  margin-left: var(--wc-sidebar-w) !important;
+  width: calc(100vw - var(--wc-sidebar-w)) !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+  padding: 24px clamp(18px, 2vw, 34px) 42px !important;
+}
+body[data-view="repertoire"] #app {
+  overflow-x: clip !important;
+}
+body[data-view="repertoire"] .rep-layout,
+body[data-view="repertoire"] .wc-repertoire-stable,
+body[data-view="repertoire"] .wc-enhanced-repertoire {
+  display: grid !important;
+  grid-template-columns: var(--oos-rep-left) minmax(0, 1fr) !important;
+  grid-template-areas:
+    "folders main"
+    "folders notes" !important;
+  gap: var(--oos-rep-gap) !important;
+  align-items: start !important;
+  max-width: 1760px !important;
+  margin-inline: auto !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+body[data-view="repertoire"] .rep-folders,
+body[data-view="repertoire"] .rep-folders-pro {
+  grid-area: folders !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  position: sticky !important;
+  top: calc(var(--wc-topbar-h, 68px) + 18px) !important;
+  max-height: calc(100dvh - var(--wc-topbar-h, 68px) - 34px) !important;
+  z-index: 2 !important;
+}
+body[data-view="repertoire"] .rep-main {
+  grid-area: main !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  overflow: visible !important;
+  z-index: 1 !important;
+}
+body[data-view="repertoire"] .rep-aside:not(.notes-dock-floating) {
+  grid-area: notes !important;
+  grid-column: 2 !important;
+  position: static !important;
+  max-height: none !important;
+  overflow: visible !important;
+  width: 100% !important;
+  z-index: 1 !important;
+  margin-top: 0 !important;
+}
+body[data-view="repertoire"] .rep-aside.notes-dock-floating {
+  z-index: 95 !important;
+  box-shadow: 0 28px 90px rgb(0 0 0 / 32%) !important;
+}
+body[data-view="repertoire"] .editor-grid {
+  display: grid !important;
+  grid-template-columns: minmax(min(100%, 560px), var(--oos-rep-board-size)) minmax(300px, 1fr) !important;
+  gap: 22px !important;
+  justify-content: center !important;
+  align-items: start !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+body[data-view="repertoire"] .editor-grid > .stack:first-child {
+  min-width: 0 !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+body[data-view="repertoire"] .editor-grid > .stack:nth-child(2) {
+  min-width: 0 !important;
+  align-self: stretch !important;
+}
+body[data-view="repertoire"] .chess-board.full,
+body[data-view="repertoire"] .editor-grid .chess-board.full {
+  width: min(100%, var(--oos-rep-board-size)) !important;
+  max-width: min(100%, var(--oos-rep-board-size)) !important;
+  min-width: 0 !important;
+  margin-inline: auto !important;
+  border-radius: 22px !important;
+  box-shadow: 0 30px 90px rgb(0 0 0 / 26%), 0 0 0 1px color-mix(in oklab, var(--line) 74%, transparent) !important;
+}
+body[data-view="repertoire"] .repertoire-board-actions,
+body[data-view="repertoire"] .board-actions {
+  width: min(100%, var(--oos-rep-board-size)) !important;
+  margin: 14px auto 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  padding: 10px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 18px !important;
+  background: color-mix(in oklab, var(--bg-1) 94%, transparent) !important;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 12%) !important;
+}
+body[data-view="repertoire"] .repertoire-board-actions .btn.is-active,
+body[data-view="repertoire"] .board-actions .btn.is-active {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--line)) !important;
+}
+body[data-view="repertoire"] .board-action-sep {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding-inline: 4px;
+}
+body[data-view="repertoire"] .player-board-toolbar,
+body[data-view="repertoire"] .wc-board-toolbar,
+body[data-view="repertoire"] .wc-position-dock {
+  display: none !important;
+}
+body[data-view="repertoire"] .line-header,
+body[data-view="repertoire"] .move-tree,
+body[data-view="repertoire"] .idea-card,
+body[data-view="repertoire"] .line-surgery,
+body[data-view="repertoire"] .rep-flow-map,
+body[data-view="repertoire"] .rep-aside {
+  border-radius: 22px !important;
+}
+body[data-view="repertoire"] .move-tree,
+body[data-view="repertoire"] .idea-card,
+body[data-view="repertoire"] .line-surgery {
+  overflow: visible !important;
+  min-width: 0 !important;
+}
+body[data-view="repertoire"] .line-header {
+  align-items: flex-start !important;
+  gap: 16px !important;
+}
+body[data-view="repertoire"] .line-actions {
+  max-width: 100% !important;
+}
+body[data-view="repertoire"] .rep-flow-map {
+  overflow-x: auto !important;
+}
+body[data-view="repertoire"] .flow-trunk {
+  padding-bottom: 16px !important;
+}
+body[data-view="repertoire"] .notes-dock-controls .btn {
+  min-width: 58px;
+}
+body[data-view="repertoire"] .cb-coord {
+  font-size: 2.65px !important;
+  font-weight: 850 !important;
+  opacity: .9 !important;
+  stroke: color-mix(in oklab, var(--bg-0) 60%, transparent) !important;
+  stroke-width: .16px !important;
+}
+body[data-view="repertoire"].rep-board-focus .rep-folders,
+body[data-view="repertoire"].rep-board-focus .rep-aside,
+body[data-view="repertoire"].rep-board-focus .rep-flow-map,
+body[data-view="repertoire"].rep-board-focus .line-surgery,
+body[data-view="repertoire"].rep-board-focus .wc-rep-command,
+body[data-view="repertoire"].rep-board-focus .wc-position-dock {
+  display: none !important;
+}
+body[data-view="repertoire"].rep-board-focus .rep-layout,
+body[data-view="repertoire"].rep-board-focus .wc-repertoire-stable,
+body[data-view="repertoire"].rep-board-focus .wc-enhanced-repertoire {
+  grid-template-columns: 1fr !important;
+  grid-template-areas: "main" !important;
+  max-width: 1240px !important;
+}
+body[data-view="repertoire"].rep-board-focus .editor-grid {
+  grid-template-columns: minmax(620px, min(84vh, 860px)) minmax(320px, 440px) !important;
+}
+body[data-view="repertoire"].rep-board-focus .chess-board.full {
+  --oos-rep-board-size: min(84vh, 860px);
+}
+@media (max-width: 1360px) {
+  body[data-view="repertoire"] .editor-grid {
+    grid-template-columns: minmax(min(100%, 520px), min(100%, 700px)) minmax(290px, 1fr) !important;
+  }
+}
+@media (max-width: 1180px) {
+  body.wc-shell-enabled #wcTopbar { left: 0 !important; width: 100vw !important; }
+  body.wc-shell-enabled #app { margin-left: 0 !important; width: 100vw !important; padding-inline: 14px !important; }
+  body[data-view="repertoire"] .rep-layout,
+  body[data-view="repertoire"] .wc-repertoire-stable,
+  body[data-view="repertoire"] .wc-enhanced-repertoire {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: "main" "folders" "notes" !important;
+  }
+  body[data-view="repertoire"] .rep-folders,
+  body[data-view="repertoire"] .rep-folders-pro {
+    position: static !important;
+    max-height: none !important;
+  }
+  body[data-view="repertoire"] .rep-aside:not(.notes-dock-floating) {
+    grid-column: 1 !important;
+  }
+}
+@media (max-width: 980px) {
+  body[data-view="repertoire"] .editor-grid,
+  body[data-view="repertoire"].rep-board-focus .editor-grid {
+    grid-template-columns: 1fr !important;
+  }
+  body[data-view="repertoire"] .chess-board.full,
+  body[data-view="repertoire"] .editor-grid .chess-board.full {
+    width: min(100%, 720px) !important;
+  }
+}
+@media (max-width: 600px) {
+  body[data-view="repertoire"] .line-header {
+    padding: 16px !important;
+  }
+  body[data-view="repertoire"] .repertoire-board-actions .practice-from-here,
+  body[data-view="repertoire"] .board-actions .practice-from-here {
+    flex-basis: 100%;
+  }
+  body[data-view="repertoire"] .chess-board.full {
+    width: min(100%, calc(100vw - 28px)) !important;
+  }
+}
+
+body.wc-sidebar-open::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 79;
+  background: rgb(0 0 0 / 42%);
+  backdrop-filter: blur(4px);
+}
+@media (max-width: 820px) {
+  .wc-sidebar {
+    background: color-mix(in oklab, var(--bg-1) 96%, black 4%) !important;
+    color: var(--text-0) !important;
+    box-shadow: 30px 0 90px rgb(0 0 0 / 44%) !important;
+  }
+  .wc-side-nav button {
+    background: color-mix(in oklab, var(--bg-2) 82%, transparent) !important;
+    border: 1px solid var(--line) !important;
+    color: var(--text-1) !important;
+  }
+  .wc-sidebar-brand::after {
+    content: '×';
+    margin-left: auto;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: var(--bg-3);
+    color: var(--text-0);
+    border: 1px solid var(--line);
+    font-size: 22px;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   v26 — Repertoire Studio: board-first, non-overlapping, stable controls.
+   -------------------------------------------------------------------------- */
+:root {
+  --rep-pro-folder-w: 300px;
+  --rep-pro-gap: 22px;
+  --rep-board-compact: clamp(460px, 56vh, 560px);
+  --rep-board-comfort: clamp(560px, 66vh, 700px);
+  --rep-board-analysis: clamp(640px, 76vh, 820px);
+}
+html[data-rep-board-size="compact"] { --rep-board-current: var(--rep-board-compact); }
+html[data-rep-board-size="comfort"], html:not([data-rep-board-size]) { --rep-board-current: var(--rep-board-comfort); }
+html[data-rep-board-size="analysis"] { --rep-board-current: var(--rep-board-analysis); }
+
+body.wc-shell-enabled > .app-sidebar:not(.wc-sidebar) { display: none !important; }
+body.wc-shell-enabled[data-view="repertoire"] #app {
+  box-sizing: border-box !important;
+  margin-left: var(--wc-sidebar-w, 264px) !important;
+  width: calc(100vw - var(--wc-sidebar-w, 264px)) !important;
+  max-width: none !important;
+  padding: clamp(14px, 1.5vw, 24px) clamp(14px, 1.8vw, 30px) 42px !important;
+  overflow: visible !important;
+}
+body[data-view="repertoire"] .wc-rep-command,
+body[data-view="repertoire"] .player-rep-command-strip,
+body[data-view="repertoire"] .wc-board-toolbar,
+body[data-view="repertoire"] .player-board-toolbar { display: none !important; }
+
+body[data-view="repertoire"] .rep-layout {
+  display: grid !important;
+  grid-template-columns: minmax(260px, var(--rep-pro-folder-w)) minmax(0, 1fr) !important;
+  grid-template-areas:
+    "folders main"
+    "folders notes" !important;
+  gap: var(--rep-pro-gap) !important;
+  align-items: start !important;
+  max-width: 1620px !important;
+  margin-inline: auto !important;
+  overflow: visible !important;
+}
+body[data-view="repertoire"] .rep-folders {
+  grid-area: folders !important;
+  position: sticky !important;
+  top: calc(var(--topbar-h, 62px) + 18px) !important;
+  max-height: calc(100dvh - 94px) !important;
+  overflow: auto !important;
+  z-index: 2 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 16px 45px rgba(0,0,0,.12) !important;
+}
+body[data-view="repertoire"] .rep-main { grid-area: main !important; min-width: 0 !important; overflow: visible !important; }
+body[data-view="repertoire"] .rep-aside {
+  grid-area: notes !important;
+  position: static !important;
+  max-height: none !important;
+  overflow: visible !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  z-index: 1 !important;
+  border-radius: 22px !important;
+}
+body[data-view="repertoire"] .rep-aside.notes-dock-right,
+body[data-view="repertoire"] .rep-aside.notes-dock-below { display: grid !important; gap: 12px !important; }
+body[data-view="repertoire"] .rep-aside.notes-dock-floating {
+  position: fixed !important;
+  right: 24px !important;
+  top: 92px !important;
+  width: min(420px, calc(100vw - 32px)) !important;
+  max-height: calc(100dvh - 120px) !important;
+  overflow: auto !important;
+  z-index: 120 !important;
+  box-shadow: 0 30px 90px rgba(0,0,0,.35) !important;
+  resize: both;
+}
+body[data-view="repertoire"] .notes-dock-floating .notes-drag { cursor: grab; user-select: none; }
+body[data-view="repertoire"] .notes-dock-floating.is-dragging .notes-drag { cursor: grabbing; }
+body[data-view="repertoire"] .notes-dock-controls { display: flex; flex-wrap: wrap; gap: 6px; }
+
+body[data-view="repertoire"] .line-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 16px !important;
+  align-items: start !important;
+  padding: clamp(16px, 2vw, 24px) !important;
+  border: 1px solid var(--line, var(--border)) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg, var(--bg-1), color-mix(in oklab, var(--bg-2) 86%, transparent)) !important;
+}
+body[data-view="repertoire"] .line-header h2 { font-size: clamp(24px, 2.4vw, 40px) !important; line-height: 1.05 !important; }
+body[data-view="repertoire"] .line-actions { justify-content: flex-end !important; }
+body[data-view="repertoire"] .editor-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px) !important;
+  gap: 22px !important;
+  align-items: start !important;
+  margin-top: 18px !important;
+}
+body[data-view="repertoire"] .repertoire-board-panel {
+  align-items: center !important;
+  min-width: 0 !important;
+  border: 1px solid var(--line, var(--border)) !important;
+  border-radius: 24px !important;
+  background: radial-gradient(circle at 20% 0%, color-mix(in oklab, var(--accent) 11%, transparent), transparent 34%), var(--bg-1) !important;
+  padding: clamp(12px, 1.5vw, 20px) !important;
+  box-shadow: 0 18px 54px rgba(0,0,0,.16) !important;
+}
+body[data-view="repertoire"] .repertoire-board-actions,
+body[data-view="repertoire"] .board-actions {
+  width: min(100%, var(--rep-board-current)) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin: 12px auto 0 !important;
+  padding: 10px !important;
+  border: 1px solid var(--line, var(--border)) !important;
+  border-radius: 16px !important;
+  background: color-mix(in oklab, var(--bg-0) 84%, transparent) !important;
+}
+body[data-view="repertoire"] .repertoire-board-actions .btn.is-active,
+body[data-view="repertoire"] .board-actions .btn.is-active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--on-accent, #111) !important;
+  font-weight: 800 !important;
+}
+body[data-view="repertoire"] .repertoire-board-host,
+body[data-view="repertoire"] .editor-grid .chess-board.full,
+body[data-view="repertoire"] .chess-board.full {
+  --board-size: min(var(--rep-board-current), 100%) !important;
+  width: min(var(--rep-board-current), 100%) !important;
+  max-width: 100% !important;
+  min-width: min(520px, 100%) !important;
+  margin-inline: auto !important;
+  border-radius: 20px !important;
+  box-shadow: 0 30px 90px rgba(0,0,0,.35), 0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent) !important;
+}
+body[data-view="repertoire"] .editor-grid > .stack:nth-child(2) { min-width: 0 !important; display: grid !important; gap: 14px !important; }
+body[data-view="repertoire"] .move-tree,
+body[data-view="repertoire"] .idea-card,
+body[data-view="repertoire"] .line-surgery,
+body[data-view="repertoire"] .rep-flow-map,
+body[data-view="repertoire"] .panel { max-width: 100% !important; overflow-wrap: anywhere !important; }
+body[data-view="repertoire"] .move-tree { max-height: 360px !important; overflow: auto !important; }
+body[data-view="repertoire"] .moves { line-height: 2.05 !important; }
+body[data-view="repertoire"] .move-token, body[data-view="repertoire"] .moves button { margin: 2px !important; }
+
+body.rep-board-focus[data-view="repertoire"] > .wc-sidebar,
+body.rep-board-focus[data-view="repertoire"] > .app-sidebar { display: none !important; }
+body.rep-board-focus[data-view="repertoire"] #wcTopbar { display: none !important; }
+body.rep-board-focus[data-view="repertoire"] #app { margin-left: 0 !important; width: 100vw !important; padding: 18px !important; max-width: none !important; }
+body.rep-board-focus[data-view="repertoire"] .rep-layout { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "main" "notes" !important; max-width: 1180px !important; }
+body.rep-board-focus[data-view="repertoire"] .rep-folders { display: none !important; }
+body.rep-board-focus[data-view="repertoire"] .rep-main { grid-area: main !important; }
+body.rep-board-focus[data-view="repertoire"] .rep-aside { grid-area: notes !important; }
+body.rep-board-focus[data-view="repertoire"] .editor-grid { grid-template-columns: minmax(0, 1fr) !important; }
+body.rep-board-focus[data-view="repertoire"] .editor-grid > .stack:nth-child(2) { max-width: 860px; margin-inline: auto; width: 100%; }
+body.rep-board-focus[data-view="repertoire"] .repertoire-board-host,
+body.rep-board-focus[data-view="repertoire"] .chess-board.full { --board-size: min(86vh, 86vw, 880px) !important; width: var(--board-size) !important; }
+
+body[data-view="repertoire"] .rep-flow-map { margin-top: 20px !important; padding: clamp(14px, 1.6vw, 22px) !important; border-radius: 24px !important; border: 1px solid var(--line, var(--border)) !important; background: linear-gradient(180deg, var(--bg-1), color-mix(in oklab, var(--bg-2) 88%, transparent)) !important; overflow: hidden !important; }
+body[data-view="repertoire"] .flow-trunk { position: relative !important; display: flex !important; gap: 12px !important; padding: 18px 4px 16px !important; overflow-x: auto !important; scrollbar-width: thin !important; }
+body[data-view="repertoire"] .flow-node { flex: 0 0 auto !important; min-width: 74px !important; border-radius: 16px !important; padding: 10px 12px !important; box-shadow: 0 8px 22px rgba(0,0,0,.09) !important; }
+body[data-view="repertoire"] .flow-branches { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important; }
+body[data-view="repertoire"] .flow-branch-card { border-radius: 18px !important; padding: 14px !important; }
+body[data-view="repertoire"] .rep-folder-actions,
+body[data-view="repertoire"] .rep-folder-footer { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; }
+body[data-view="repertoire"] .rep-line { border-radius: 14px !important; padding: 10px 11px !important; min-height: 54px !important; text-align: left !important; }
+body[data-view="repertoire"] .rep-line.is-active { background: color-mix(in oklab, var(--accent) 14%, var(--bg-2)) !important; border-color: color-mix(in oklab, var(--accent) 45%, var(--line)) !important; }
+body[data-view="repertoire"] .cb-coord { font-size: 2.75px !important; font-weight: 900 !important; opacity: .92 !important; paint-order: stroke !important; stroke: rgba(0,0,0,.25) !important; stroke-width: .18px !important; dominant-baseline: middle !important; }
+body[data-view="repertoire"] .cb-file-coord,
+body[data-view="repertoire"] .cb-rank-coord { transform: none !important; }
+
+@media (max-width: 820px) {
+  body.wc-shell-enabled[data-view="repertoire"] #app { margin-left: 0 !important; width: 100vw !important; padding: 12px 12px 96px !important; }
+  .wc-sidebar { background: var(--bg-1) !important; color: var(--text-1) !important; border-right: 1px solid var(--line, var(--border)) !important; box-shadow: 20px 0 80px rgba(0,0,0,.42) !important; z-index: 180 !important; }
+  body.wc-sidebar-open::after { content: ''; position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 170; }
+  body.wc-sidebar-open .wc-sidebar::before { content: 'Close menu ×'; display: block; margin: 0 0 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line, var(--border)); background: var(--bg-2); color: var(--text-1); font-weight: 800; }
+  body[data-view="repertoire"] .rep-layout { grid-template-columns: 1fr !important; grid-template-areas: "main" "folders" "notes" !important; gap: 14px !important; }
+  body[data-view="repertoire"] .rep-folders { display: block !important; position: static !important; max-height: 310px !important; grid-area: folders !important; }
+  body[data-view="repertoire"] .rep-main { grid-area: main !important; }
+  body[data-view="repertoire"] .rep-aside { grid-area: notes !important; }
+  body[data-view="repertoire"] .line-header { grid-template-columns: 1fr !important; }
+  body[data-view="repertoire"] .editor-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+  body[data-view="repertoire"] .repertoire-board-host,
+  body[data-view="repertoire"] .chess-board.full { --board-size: min(calc(100vw - 36px), 560px) !important; min-width: 0 !important; }
+  body[data-view="repertoire"] .repertoire-board-actions,
+  body[data-view="repertoire"] .board-actions { width: 100% !important; }
+}
+@media (min-width: 821px) and (max-width: 1500px) {
+  body[data-view="repertoire"] .editor-grid { grid-template-columns: 1fr !important; }
+  body[data-view="repertoire"] .editor-grid > .stack:nth-child(2) { max-width: min(100%, 880px); margin-inline: auto; width: 100%; }
+  body[data-view="repertoire"] .repertoire-board-host,
+  body[data-view="repertoire"] .chess-board.full { --board-size: min(var(--rep-board-current), 100%) !important; }
+}
+@media (min-width: 1501px) {
+  body[data-view="repertoire"] .editor-grid { grid-template-columns: minmax(620px, 1fr) minmax(330px, 430px) !important; }
+}

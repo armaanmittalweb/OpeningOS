@@ -460,15 +460,37 @@
     // Editor grid: board + (move tree + idea card)
     const grid = el('div', { class: 'editor-grid' });
 
-    const boardWrap = el('div', { class: 'stack' });
-    const boardHost = el('div', { class: 'chess-board full' });
+    const boardWrap = el('div', { class: 'stack repertoire-board-panel' });
+    const boardHost = el('div', { class: 'chess-board full repertoire-board-host' });
     boardWrap.appendChild(boardHost);
 
-    const boardActions = el('div', { class: 'row', style: { gap: '8px' } }, [
+    const currentBoardSize = (DB.getSetting && (DB.getSetting('repertoireBoardSize') || DB.getSetting('repBoardSize') || DB.getSetting('boardSize'))) || 'comfort';
+    const setRepertoireBoardSize = (size) => {
+      document.documentElement.setAttribute('data-rep-board-size', size);
+      document.documentElement.setAttribute('data-board-size', size);
+      if (DB.setSetting) {
+        DB.setSetting('repertoireBoardSize', size);
+        DB.setSetting('repBoardSize', size);
+        DB.setSetting('boardSize', size);
+      }
+      global.OOSApp.toast('Board size set to ' + size, 'good');
+      renderRepertoire(app);
+    };
+    document.documentElement.setAttribute('data-rep-board-size', currentBoardSize);
+    const boardActions = el('div', { class: 'board-actions repertoire-board-actions', role: 'toolbar', 'aria-label': 'Repertoire board controls' }, [
       el('button', { class: 'btn btn-sm', on: { click: () => repState.board && repState.board.flip() } }, [icon(ICONS.flip, 12), 'Flip']),
       el('button', { class: 'btn btn-sm', on: { click: () => stepMove(-1) } }, ['◀ Prev']),
       el('button', { class: 'btn btn-sm', on: { click: () => stepMove(1) } }, ['Next ▶']),
-      el('button', { class: 'btn btn-sm btn-primary', style: { marginLeft: 'auto' }, on: { click: () => {
+      el('span', { class: 'board-action-sep' }, ['Board']),
+      el('button', { class: 'btn btn-sm' + (currentBoardSize === 'compact' ? ' is-active' : ''), title: 'Smaller board for cramped screens', on: { click: () => setRepertoireBoardSize('compact') } }, ['Compact']),
+      el('button', { class: 'btn btn-sm' + (currentBoardSize === 'comfort' || currentBoardSize === 'medium' ? ' is-active' : ''), title: 'Comfortable study size', on: { click: () => setRepertoireBoardSize('comfort') } }, ['Comfort']),
+      el('button', { class: 'btn btn-sm' + (currentBoardSize === 'analysis' ? ' is-active' : ''), title: 'Large analysis board', on: { click: () => setRepertoireBoardSize('analysis') } }, ['Analysis']),
+      el('button', { class: 'btn btn-sm', title: 'Focus only on the board and move list', on: { click: () => {
+        document.body.classList.toggle('rep-board-focus');
+        document.body.classList.remove('wc-board-focus');
+        global.OOSApp.toast(document.body.classList.contains('rep-board-focus') ? 'Board focus on' : 'Board focus off', 'info');
+      } } }, ['Focus board']),
+      el('button', { class: 'btn btn-sm btn-primary practice-from-here', on: { click: () => {
         const cards = DB.cardsFromLine ? DB.cardsFromLine(line.id, repState.currentPly) : DB.positionsForLine(line.id);
         global.OOSViews.startSessionWith(cards, { mode: 'daily' });
       } } }, [icon(ICONS.bolt, 12), 'Practice from here']),
@@ -525,7 +547,7 @@
     main.appendChild(buildVariationMap(line, repState.currentPly));
 
     // ---- Aside: notes / metadata --------------------------------------
-    const notesDock = DB.getSetting ? DB.getSetting('notesDock', 'right') : 'right';
+    const notesDock = DB.getSetting ? DB.getSetting('notesDock', 'below') : 'below';
     const aside = el('aside', { class: 'rep-aside notes-dock-' + notesDock });
     aside.appendChild(el('div', { class: 'notes-pro-head' }, [
       el('div', { class: 'notes-drag', title: notesDock === 'floating' ? 'Drag notes' : 'Notes dock' }, [

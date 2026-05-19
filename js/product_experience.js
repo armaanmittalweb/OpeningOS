@@ -716,7 +716,10 @@
     // Lightweight health refresh only. View decorators are installed once and
     // run from render/navigation wrappers; repeatedly patching every few seconds
     // made the page feel heavy on slower devices.
-    setInterval(() => { updateTrustPill(); }, 15000);
+    setTimeout(updateTrustPill, 1500);
+    window.addEventListener('focus', updateTrustPill, { passive: true });
+    window.addEventListener('online', updateTrustPill, { passive: true });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) updateTrustPill(); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

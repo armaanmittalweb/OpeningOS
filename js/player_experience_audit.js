@@ -201,6 +201,9 @@
   }
   function addBoardToolbars(root) {
     $all('.chess-board', root || document).forEach(board => {
+      // Repertoire owns its own board toolbar. A second toolbar makes the core
+      // workspace feel cramped and can make Focus/Compact controls conflict.
+      if (board.closest('.rep-layout')) return;
       if (board.dataset.playerToolbar === '1') return;
       const parent = board.parentElement;
       if (!parent) return;
@@ -240,7 +243,7 @@
     const DB = global.OOSData;
     if (!DB) return;
     const line = currentLine(app);
-    addBoardToolbars(app);
+    // Repertoire owns its own board toolbar to avoid duplicate controls.
     addRepertoireCommandStrip(app, line);
     decorateLineTree(app);
     decorateIdeaEmptyStates(app);

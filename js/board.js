@@ -265,11 +265,11 @@
         const sqLight = (7 + file) % 2 === 0; // bottom row coloration
         // file letter (bottom)
         const ft = document.createElementNS(NS, 'text');
-        ft.setAttribute('x', i * 10 + 8.35);
-        ft.setAttribute('y', 78.55);
+        ft.setAttribute('x', i * 10 + 8.75);
+        ft.setAttribute('y', 78.85);
         ft.setAttribute('class', 'cb-coord cb-file-coord');
-        ft.setAttribute('text-anchor', 'middle');
-        ft.setAttribute('dominant-baseline', 'middle');
+        ft.setAttribute('text-anchor', 'end');
+        ft.setAttribute('dominant-baseline', 'ideographic');
         ft.setAttribute('fill', sqLight ? '#70806e' : '#f3f6ef');
         ft.textContent = FILES[file];
         this.gCoords.appendChild(ft);
@@ -277,11 +277,11 @@
         // rank number (left)
         const sqLightL = (i + 0) % 2 === 0;
         const rt = document.createElementNS(NS, 'text');
-        rt.setAttribute('x', 1.55);
-        rt.setAttribute('y', i * 10 + 1.75);
+        rt.setAttribute('x', 1.12);
+        rt.setAttribute('y', i * 10 + 2.1);
         rt.setAttribute('class', 'cb-coord cb-rank-coord');
-        rt.setAttribute('text-anchor', 'middle');
-        rt.setAttribute('dominant-baseline', 'middle');
+        rt.setAttribute('text-anchor', 'start');
+        rt.setAttribute('dominant-baseline', 'hanging');
         rt.setAttribute('fill', sqLightL ? '#70806e' : '#f3f6ef');
         rt.textContent = rank;
         this.gCoords.appendChild(rt);

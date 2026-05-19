@@ -33,7 +33,7 @@ for (const required of ['vendor/chess.min.js', 'js/product_auth.js', 'js/player_
   assert(index.includes(required), `index.html must load ${required}`);
 }
 assert(index.indexOf('js/world_class_product_core.js') > index.indexOf('js/app.js'), 'World-class core should load after app.js so it can enhance rendered pages');
-assert(sw.includes('oos-v25-repertoire-workspace-tree-folders'), 'Service worker cache version must be bumped for the world-class core release');
+assert(sw.includes('oos-v26-repertoire-studio-stable'), 'Service worker cache version must be bumped for the world-class core release');
 assert(sw.includes('./js/world_class_product_core.js'), 'Service worker must cache the world-class product core');
 assert(!fs.existsSync(path.join(root, 'Dockerfile')), 'Root Dockerfile must not exist; it can make DigitalOcean deploy the wrong component');
 assert(fs.existsSync(path.join(root, 'Dockerfile.frontend')), 'Frontend Dockerfile should remain renamed as Dockerfile.frontend');
@@ -82,7 +82,7 @@ for (const required of ['addFolder', 'updateFolder', 'deleteFolder', 'moveLineTo
 for (const required of ['buildVariationMap', 'rep-flow-map', 'Add branch here', 'Move line', 'notesDock', 'makeNotesPanelDraggable']) {
   assert(views.includes(required), `Repertoire premium workspace missing ${required}`);
 }
-for (const required of ['oos-v25-repertoire-workspace-tree-folders', 'rep-flow-map', 'notes-dock-floating', '--oos-rep-board-size', 'bs-close']) {
+for (const required of ['oos-v26-repertoire-studio-stable', 'rep-flow-map', 'notes-dock-floating', '--oos-rep-board-size', 'bs-close']) {
   assert(styles.includes(required) || sw.includes(required), `Workspace polish missing ${required}`);
 }
 const appJs = fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8');
@@ -141,4 +141,12 @@ const session = new context.OOSPractice.PracticeSession(cards, { shuffle: false,
 assert(session.evaluate('c6').kind === 'correct', 'Practice should accept repertoire move');
 context.OOSData.addAlternateToCard(cards[0].id, 'e6', '');
 assert(session.evaluate('e6').kind === 'correct-alt', 'Practice should accept persisted alternate');
+
+// Repertoire studio final polish.
+for (const required of ['repertoire-board-actions', 'repertoire-board-panel', 'repertoire-board-host', 'notes-dock-floating', 'rep-board-focus']) {
+  assert(views.includes(required) || styles.includes(required), `Repertoire studio missing ${required}`);
+}
+assert(styles.includes('body.wc-shell-enabled[data-view="repertoire"] #app'), 'Repertoire page must account for the workspace sidebar');
+assert(styles.includes('grid-template-areas'), 'Repertoire layout should use explicit grid areas to prevent overlap');
+
 console.log('OpeningOS product smoke checks passed');
