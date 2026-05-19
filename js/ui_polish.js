@@ -120,40 +120,7 @@
     return { wrap, panel, close: () => wrap.remove() };
   }
 
-  function appendAssurancePanel(app) {
-    if (!app || app.querySelector('.ux-assurance-card')) return;
-    const target = app.querySelector('.settings-grid > main') || app.querySelector('.settings-grid') || app;
-    const checks = featureChecks();
-    const passed = checks.filter(c => c.ok).length;
-    const card = h('section', { class: 'setting-group ux-assurance-card', id: 'settings-product-assurance' }, [
-      h('div', { class: 'row-between ux-assurance-head' }, [
-        h('div', {}, [
-          h('h3', {}, ['Product assurance']),
-          h('div', { class: 'desc' }, ['A quick confidence panel for serious players, coaches, and deployment testing.']),
-        ]),
-        h('span', { class: 'pill ' + (passed === checks.length ? 'pill-good' : 'pill-warn') }, [`${passed}/${checks.length} active`]),
-      ]),
-      h('div', { class: 'ux-feature-grid' }, checks.map(c => h('div', { class: 'ux-feature ' + (c.ok ? 'ok' : 'warn') }, [
-        h('span', { class: 'ux-feature-icon', 'aria-hidden': 'true' }, [c.ok ? '✓' : '!']),
-        h('div', {}, [h('strong', {}, [c.name]), h('small', {}, [c.desc])]),
-      ]))),
-      h('div', { class: 'row ux-assurance-actions' }, [
-        h('button', { class: 'btn', on: { click: runUXChecklist } }, ['Run UX check']),
-        h('button', { class: 'btn', on: { click: () => global.OOSViews && global.OOSViews.showBackupRestore ? global.OOSViews.showBackupRestore() : toast('Data safety center unavailable', 'warn') } }, ['Data safety']),
-        h('button', { class: 'btn btn-primary', on: { click: () => { const n = document.getElementById('settings-cloud'); if (n) n.scrollIntoView({ behavior: 'smooth', block: 'start' }); else toast('Cloud sync panel is in Settings after Appwrite setup loads', 'info'); } } }, ['Cloud sync setup']),
-      ]),
-    ]);
-    target.appendChild(card);
-
-    const side = app.querySelector('.settings-side');
-    if (side && !side.querySelector('[href="#settings-product-assurance"]')) {
-      side.appendChild(h('a', { href: '#settings-product-assurance', on: { click: e => {
-        e.preventDefault();
-        const n = document.getElementById('settings-product-assurance');
-        if (n) n.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } } }, ['Product assurance']));
-    }
-  }
+  function appendAssurancePanel(app) { /* Removed from player Settings; assurance checks stay available internally. */ }
 
   function enhanceInteractive(root) {
     root = root || document;

@@ -492,9 +492,28 @@
   };
 
   // -- Onboarding --------------------------------------------------------
+  function accountOnboardingKey() {
+    try {
+      const st = global.OOSAuthBridge && global.OOSAuthBridge.authState ? global.OOSAuthBridge.authState() : null;
+      const email = st && st.user && st.user.email ? String(st.user.email).toLowerCase() : '';
+      return email ? 'oos.onboarding.account.' + email : '';
+    } catch (_) { return ''; }
+  }
+
   function maybeShowOnboarding() {
     const DB = global.OOSData;
-    if (DB.isOnboarded()) return;
+    if (!DB) return;
+    const accountKey = accountOnboardingKey();
+    if (DB.isOnboarded()) {
+      if (accountKey && !localStorage.getItem(accountKey)) {
+        try { localStorage.setItem(accountKey, JSON.stringify({ completedAt: Date.now(), source: 'profile' })); } catch (_) {}
+      }
+      return;
+    }
+    if (accountKey && localStorage.getItem(accountKey)) {
+      DB.setOnboarded();
+      return;
+    }
     if (location.search.includes('skip-onboard')) { DB.setOnboarded(); return; }
     const onb = document.getElementById('onboard');
     onb.hidden = false;

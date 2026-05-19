@@ -255,12 +255,7 @@
     const target = app.querySelector('.settings-grid') || app.firstElementChild || app;
     target.appendChild(panel);
   }
-  function installSettingsPatch() {
-    const render = () => setTimeout(appendSettingsPanel, 50);
-    window.addEventListener('hashchange', render);
-    window.addEventListener('DOMContentLoaded', render);
-    const mo = new MutationObserver(render); mo.observe(document.documentElement, { childList: true, subtree: true });
-  }
+  function installSettingsPatch() { /* Player Settings owns account/sync UI; keep API only. */ }
 
   const api = {
     config, isConfigured, signedIn, request, signUp, signIn, signOut, refreshSession,

@@ -178,6 +178,9 @@
     (Array.isArray(children) ? children : [children]).filter(x => x !== null && x !== undefined).forEach(c => n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
     return n;
   }
+  function appendClean(parent, ...items) {
+    items.flat().filter(x => x !== null && x !== undefined && x !== false).forEach(x => parent.appendChild(typeof x === 'string' ? document.createTextNode(x) : x));
+  }
   function field(label, type, value, autocomplete, placeholder) {
     const input = el('input', { class: 'input', type: type || 'text', value: value || '', autocomplete: autocomplete || 'off', placeholder: placeholder || '' });
     return el('label', { class: 'field product-field' }, [el('span', { text: label }), input]);
@@ -244,7 +247,7 @@
           } } }, ['Start local study'])
         ]));
       } else {
-        card.append(
+        appendClean(card,
           el('h2', { text: mode === 'signin' ? 'Welcome back' : 'Create your account' }),
           el('p', { class: 'muted', text: mode === 'signin' ? 'Sign in to sync your openings, imports and coach workspaces.' : 'Use a real account for sync, recovery, reliable game imports and sharing.' }),
           mode === 'signup' ? name : null,

@@ -377,22 +377,13 @@
   }
 
   function maybeBackupReminder() {
+    // No blocking browser alert on startup. Backup/export is available from
+    // Settings → Reliability center, while signed-in users have cloud sync.
+    // Keep a marker so older cached sessions do not resurface the old prompt.
+    try { localStorage.setItem('oos.launch.backupReminderDismissedAt', String(Date.now())); } catch (_) {}
     const DB = db();
-    if (!DB || !DB.settings) return;
-    const s = DB.settings();
-    if (s.backupReminderDismissedAt && Date.now() - s.backupReminderDismissedAt < 86400000) return;
-    const last = s.lastBackupAt || 0;
-    const needs = !last || (Date.now() - last) > BACKUP_WARN_DAYS * 86400000;
-    if (!needs) return;
-    const lines = DB.lines ? DB.lines().length : 0;
-    if (!lines) return;
-    setTimeout(() => {
-      if (!confirm('OpeningOS is local-first. Export a backup now so your repertoire is safe?')) {
-        if (DB.setSetting) DB.setSetting('backupReminderDismissedAt', Date.now());
-        return;
-      }
-      exportFullBackup();
-    }, 1200);
+    if (DB && DB.setSetting) DB.setSetting('backupReminderDismissedAt', Date.now());
+    return;
   }
 
   function patchAfterBoot() {

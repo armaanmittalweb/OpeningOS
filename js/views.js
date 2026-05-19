@@ -1657,9 +1657,16 @@
           'Import from Lichess, Chess.com, or paste PGN. We highlight where your real games left your prep.',
         ]),
       ]),
-      el('div', { class: 'row' }, [
-        el('button', { class: 'btn', on: { click: () => global.OOSApp.openImport() } }, [icon(ICONS.upload, 12), 'Import PGN']),
-      ]),
+      el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [
+        el('button', { class: 'btn', on: { click: () => global.OOSApp.openImport() } }, [icon(ICONS.upload, 12), 'Import games']),
+        games.length ? el('button', { class: 'btn btn-ghost danger-btn', on: { click: () => {
+          if (!confirm('Delete all imported games from this workspace? Your repertoire lines and notes will remain.')) return;
+          (DB.importedGames() || []).slice().forEach(g => DB.removeUserGame(g.id));
+          gamesState.selected = null;
+          global.OOSApp.toast('All imported games deleted', 'good');
+          renderGames(app);
+        } } }, ['Delete all']) : null,
+      ].filter(Boolean)),
     ]));
 
     if (!games.length) {
@@ -1726,8 +1733,17 @@
           `${game.timeControl} · ${game.site} · ${game.played} · you played ${game.yourColor === 'w' ? 'White' : 'Black'}`,
         ]),
       ]),
-      el('span', { class: 'pill ' + (game.result === 'w' ? 'pill-good' : game.result === 'l' ? 'pill-bad' : 'pill-info') }, [
-        game.result === 'w' ? 'You won' : game.result === 'l' ? 'You lost' : 'Drew',
+      el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [
+        el('span', { class: 'pill ' + (game.result === 'w' ? 'pill-good' : game.result === 'l' ? 'pill-bad' : 'pill-info') }, [
+          game.result === 'w' ? 'You won' : game.result === 'l' ? 'You lost' : 'Drew',
+        ]),
+        el('button', { class: 'btn btn-sm btn-ghost danger-btn', on: { click: () => {
+          if (!confirm('Delete this imported game? This will not delete any repertoire lines.')) return;
+          DB.removeUserGame(game.id);
+          gamesState.selected = (DB.importedGames()[0] || {}).id || null;
+          global.OOSApp.toast('Imported game deleted', 'good');
+          renderGames(app);
+        } } }, ['Delete game'])
       ]),
     ]));
 
@@ -2180,136 +2196,163 @@
   // ----------------------------------------------------------------------
   // SETTINGS
   // ----------------------------------------------------------------------
+  function relativeTime(ts) {
+    if (!ts) return 'never';
+    const diff = Math.max(0, Date.now() - Number(ts));
+    if (diff < 15000) return 'just now';
+    if (diff < 60000) return Math.round(diff / 1000) + ' sec ago';
+    if (diff < 3600000) return Math.round(diff / 60000) + ' min ago';
+    if (diff < 86400000) return Math.round(diff / 3600000) + ' hr ago';
+    return Math.round(diff / 86400000) + ' days ago';
+  }
+
   function renderSettings(app) {
     const DB = global.OOSData;
     app.innerHTML = '';
-    const root = el('div', {});
+    const root = el('div', { class: 'settings-clean-page' });
 
-    root.appendChild(el('div', { style: { marginBottom: '20px' } }, [
-      el('div', { class: 'eyebrow' }, ['Settings']),
-      el('h2', { style: { marginTop: '4px' } }, ['Personalize how OpeningOS feels']),
-      el('div', { class: 'muted', style: { marginTop: '4px', fontSize: '13px' } }, [
-        'Settings are stored locally in this browser only. Your repertoire is private by default.',
+    const auth = global.OOSAuthBridge && global.OOSAuthBridge.authState ? global.OOSAuthBridge.authState() : null;
+    const signed = !!(auth && auth.token);
+    const email = signed && auth.user ? auth.user.email : '';
+    const syncState = (() => {
+      try {
+        const s = DB.settings ? DB.settings() : {};
+        return s.lastCloudSyncAt ? 'Synced ' + relativeTime(s.lastCloudSyncAt) : signed ? 'Ready to sync' : 'Sign in to sync';
+      } catch (_) { return signed ? 'Ready to sync' : 'Sign in to sync'; }
+    })();
+
+    root.appendChild(el('div', { class: 'settings-hero' }, [
+      el('div', {}, [
+        el('div', { class: 'eyebrow' }, ['Settings']),
+        el('h2', {}, ['Your OpeningOS workspace']),
+        el('p', { class: 'muted' }, ['Control appearance, board comfort, practice defaults, cloud sync, privacy and backups. Advanced deployment tools are hidden from the player settings page.']),
+      ]),
+      el('div', { class: 'settings-sync-card' }, [
+        el('span', { class: 'pill ' + (signed ? 'pill-good' : 'pill-warn') }, [signed ? 'Cloud connected' : 'Local only']),
+        el('strong', {}, [signed ? email : 'Not signed in']),
+        el('small', {}, [syncState]),
       ]),
     ]));
 
-    const layout = el('div', { class: 'settings-grid' });
-
+    const layout = el('div', { class: 'settings-grid clean-settings-grid' });
     const side = el('div', { class: 'settings-side' });
     [
+      { id: 'account', label: 'Account & sync' },
       { id: 'appearance', label: 'Appearance' },
-      { id: 'board',      label: 'Board' },
-      { id: 'practice',   label: 'Practice' },
-      { id: 'a11y',       label: 'Accessibility' },
-      { id: 'privacy',    label: 'Privacy' },
-      { id: 'data',       label: 'Data' },
-    ].forEach((s, i) => {
-      side.appendChild(el('a', {
-        href: '#settings-' + s.id,
-        class: i === 0 ? 'is-active' : '',
-        on: { click: (e) => {
-          // Don't let the hash change leak into the global router.
-          e.preventDefault();
-          side.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
-          e.currentTarget.classList.add('is-active');
-          const target = document.getElementById('settings-' + s.id);
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } },
-      }, [s.label]));
+      { id: 'board', label: 'Board' },
+      { id: 'practice', label: 'Practice' },
+      { id: 'a11y', label: 'Accessibility' },
+      { id: 'privacy', label: 'Privacy' },
+      { id: 'data', label: 'Data' },
+    ].forEach((item, i) => {
+      side.appendChild(el('a', { href: '#settings-' + item.id, class: i === 0 ? 'is-active' : '', on: { click: e => {
+        e.preventDefault();
+        side.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
+        e.currentTarget.classList.add('is-active');
+        const target = document.getElementById('settings-' + item.id);
+        if (target) target.scrollIntoView({ behavior: DB.getSetting('reducedMotion', false) ? 'auto' : 'smooth', block: 'start' });
+      } } }, [item.label]));
     });
     layout.appendChild(side);
 
-    const main = el('div', {});
+    const main = el('div', { class: 'settings-main-clean' });
+
+    main.appendChild(buildSettingsGroup('Account & cloud sync', 'settings-account', [
+      el('div', { class: 'setting-row' }, [
+        el('div', {}, [
+          el('div', { class: 'label' }, ['Account']),
+          el('div', { class: 'desc' }, [signed ? 'Your repertoire can sync across devices and use cloud imports.' : 'Sign in to sync your repertoire, imports and coach workflows.']),
+        ]),
+        el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [
+          signed ? el('button', { class: 'btn btn-sm', on: { click: async () => { try { if (global.OOSAuthBridge && global.OOSAuthBridge.signOut) await global.OOSAuthBridge.signOut(); global.OOSApp.toast('Signed out', 'good'); global.OOSApp.go('settings'); } catch (e) { global.OOSApp.toast(e.message || 'Could not sign out', 'warn'); } } } }, ['Sign out']) : el('button', { class: 'btn btn-sm btn-primary', on: { click: () => global.OOSAuthBridge && global.OOSAuthBridge.show ? global.OOSAuthBridge.show({ onDone: () => global.OOSApp.go('settings') }) : global.OOSApp.showAccountGateway && global.OOSApp.showAccountGateway() } }, ['Sign in']),
+          el('button', { class: 'btn btn-sm', on: { click: async () => {
+            try {
+              if (global.OOSEnterpriseAPI && global.OOSEnterpriseAPI.pushSnapshot) { await global.OOSEnterpriseAPI.pushSnapshot(); DB.setSetting('lastCloudSyncAt', Date.now()); global.OOSApp.toast('Workspace synced', 'good'); global.OOSApp.go('settings'); }
+              else global.OOSApp.toast('Cloud sync client is not available yet.', 'warn');
+            } catch (e) { global.OOSApp.toast(e.message || 'Sync failed. Try again.', 'warn'); }
+          } } }, ['Sync now']),
+        ]),
+      ]),
+      el('div', { class: 'setting-row' }, [
+        el('div', {}, [el('div', { class: 'label' }, ['Backup']), el('div', { class: 'desc' }, ['Export a full backup before major imports, tournaments or device changes.'])]),
+        el('button', { class: 'btn btn-sm', on: { click: () => exportData() } }, ['Export backup']),
+      ]),
+    ]));
 
     main.appendChild(buildSettingsGroup('Appearance', 'settings-appearance', [
-      toggleSetting('Light theme', 'theme', 'light', 'dark', 'Easier on bright days. Dark by default.'),
+      choiceSetting('Theme', 'theme', [
+        { v: 'dark', label: 'Dark' },
+        { v: 'light', label: 'Light' },
+      ]),
       toggleSetting('High contrast', 'highContrast', true, false, 'Boost contrast for low-vision use.'),
       choiceSetting('Font size', 'fontSize', [
-        { v: 'small',  label: 'Small'  },
+        { v: 'small', label: 'Small' },
         { v: 'normal', label: 'Normal' },
-        { v: 'large',  label: 'Large'  },
+        { v: 'large', label: 'Large' },
       ]),
     ]));
 
     main.appendChild(buildSettingsGroup('Board', 'settings-board', [
       toggleSetting('Show coordinates', 'coords', true, false, 'Files (a–h) and ranks (1–8) on board edges.'),
       choiceSetting('Notation', 'notation', [
-        { v: 'san',      label: 'SAN' },
-        { v: 'lan',      label: 'LAN' },
+        { v: 'san', label: 'SAN' },
+        { v: 'lan', label: 'LAN' },
         { v: 'figurine', label: 'Figurine' },
       ]),
       choiceSetting('Board size', 'boardSize', [
-        { v: 'small',  label: 'Small'  },
-        { v: 'medium', label: 'Medium' },
-        { v: 'large',  label: 'Large'  },
+        { v: 'small', label: 'Compact' },
+        { v: 'medium', label: 'Comfort' },
+        { v: 'large', label: 'Analysis' },
       ]),
       choiceSetting('Piece set', 'piecesSet', [
-        { v: 'classic', label: 'Classic'  },
-        { v: 'merida',  label: 'Merida'   },
-        { v: 'wood',    label: 'Wood'     },
+        { v: 'classic', label: 'Classic' },
+        { v: 'merida', label: 'Merida' },
+        { v: 'wood', label: 'Wood' },
       ]),
     ]));
 
     main.appendChild(buildSettingsGroup('Practice', 'settings-practice', [
-      toggleSetting('Sound effects', 'sound', true, false, 'Click sound on moves. Off by default.'),
-      toggleSetting('Reveal answer after wrong move', 'revealOnWrong', true, true, 'Show the prepared move when you miss.'),
+      toggleSetting('Sound effects', 'sound', true, false, 'Move and feedback sounds. Off by default.'),
+      toggleSetting('Reveal answer after wrong move', 'revealOnWrong', true, false, 'When off, you can try again before seeing the prepared move.'),
       choiceSetting('Default mode', 'defaultPracticeMode', [
-        { v: 'daily',     label: 'Daily' },
-        { v: 'weak',      label: 'Weak only' },
+        { v: 'daily', label: 'Daily' },
+        { v: 'weak', label: 'Weak only' },
         { v: 'classical', label: 'Classical' },
+        { v: 'warmup', label: 'Tournament warmup' },
       ]),
     ]));
 
     main.appendChild(buildSettingsGroup('Accessibility', 'settings-a11y', [
       toggleSetting('Reduced motion', 'reducedMotion', true, false, 'Disable animations and shake feedback.'),
-      toggleSetting('Screen-reader move announcements', 'screenReaderMoves', true, false, 'Speak last move on each ply.'),
-      toggleSetting('Color-blind safe statuses', 'cbSafe', true, false, 'Use shapes + icons in addition to color.'),
+      toggleSetting('Screen-reader move announcements', 'screenReaderMoves', true, false, 'Announce moves and practice feedback.'),
+      toggleSetting('Color-blind safe statuses', 'cbSafe', true, false, 'Use icons and shapes in addition to color.'),
     ]));
 
     main.appendChild(buildSettingsGroup('Privacy', 'settings-privacy', [
       el('div', { class: 'setting-row' }, [
-        el('div', {}, [
-          el('div', { class: 'label' }, ['Default visibility']),
-          el('div', { class: 'desc' }, ['Repertoires, notes, and games default to private. AI features off until you enable them.']),
-        ]),
+        el('div', {}, [el('div', { class: 'label' }, ['Default visibility']), el('div', { class: 'desc' }, ['Repertoires, notes and imported games stay private unless you explicitly share them.'])]),
         el('span', { class: 'pill pill-good' }, ['Private']),
       ]),
-      toggleSetting('Allow AI to summarize PGNs', 'aiSummaries', true, false, 'Off by default. Will be marked as AI-generated when on.'),
-      toggleSetting('Allow shared studies via link', 'sharingEnabled', true, false, 'Lets you create unlisted share URLs.'),
+      toggleSetting('Allow shared studies via link', 'sharingEnabled', true, false, 'Enables explicit unlisted share links.'),
+      toggleSetting('Allow AI summaries', 'aiSummaries', true, false, 'Off by default. AI output is marked when enabled.'),
     ]));
 
     main.appendChild(buildSettingsGroup('Data', 'settings-data', [
       el('div', { class: 'setting-row' }, [
-        el('div', {}, [
-          el('div', { class: 'label' }, ['Export everything']),
-          el('div', { class: 'desc' }, ['Download a complete local backup: profiles, repertoires, games, notes, SRS, card metadata, arrows, assignments, settings, and review history.']),
+        el('div', {}, [el('div', { class: 'label' }, ['Export / restore']), el('div', { class: 'desc' }, ['Download or restore a complete OpeningOS backup for this workspace.'])]),
+        el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [
+          el('button', { class: 'btn btn-sm', on: { click: () => exportData() } }, ['Export JSON']),
+          el('button', { class: 'btn btn-sm', on: { click: () => importBackup() } }, ['Import JSON']),
+          el('button', { class: 'btn btn-sm', on: { click: () => global.OOSViews.showBackupRestore() } }, ['Backup center']),
         ]),
-        el('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [el('button', { class: 'btn btn-sm', on: { click: () => exportData() } }, ['Export JSON']), el('button', { class: 'btn btn-sm', on: { click: () => global.OOSViews.showBackupRestore() } }, ['Backup / Restore'])]),
       ]),
       el('div', { class: 'setting-row' }, [
-        el('div', {}, [
-          el('div', { class: 'label' }, ['Import backup']),
-          el('div', { class: 'desc' }, ['Restore a JSON backup created from OpeningOS. This replaces the active profile data.']),
-        ]),
-        el('button', { class: 'btn btn-sm', on: { click: () => importBackup() } }, ['Import JSON']),
+        el('div', {}, [el('div', { class: 'label' }, ['Imported games']), el('div', { class: 'desc' }, [`${DB.importedGames ? DB.importedGames().length : 0} games stored in this workspace.`])]),
+        el('button', { class: 'btn btn-sm btn-ghost', on: { click: () => { if (confirm('Delete all imported games from this workspace? Your repertoire lines and notes will remain.')) { if (DB.clearImportedGames) DB.clearImportedGames(); else (DB.importedGames() || []).slice().forEach(g => DB.removeUserGame(g.id)); global.OOSApp.toast('Imported games deleted', 'good'); global.OOSApp.go('settings'); } } } }, ['Delete imported games']),
       ]),
       el('div', { class: 'setting-row' }, [
-        el('div', {}, [
-          el('div', { class: 'label' }, ['Storage health']),
-          el('div', { class: 'desc' }, ['Check IndexedDB/local cache quota before importing large PGNs.']),
-        ]),
-        el('button', { class: 'btn btn-sm', on: { click: async () => {
-          const est = global.OOSStore && await global.OOSStore.estimateStorage();
-          const mb = n => Math.round((Number(n || 0) / 1024 / 1024) * 10) / 10;
-          global.OOSApp.toast(est ? `Storage used ${mb(est.usage)}MB of ${mb(est.quota)}MB` : 'Storage estimate unavailable', 'info');
-        } } }, ['Check quota']),
-      ]),
-      el('div', { class: 'setting-row' }, [
-        el('div', {}, [
-          el('div', { class: 'label' }, ['Reset local data']),
-          el('div', { class: 'desc' }, ["Wipe this profile\'s local repertoire, games, notes, and progress."]),
-        ]),
-        el('button', { class: 'btn btn-sm', on: { click: () => { if (confirm('Reset all local data for this profile?')) { DB.reset(); global.OOSApp.toast('Local data reset', 'good'); global.OOSApp.go('today'); } } } }, ['Reset…']),
+        el('div', {}, [el('div', { class: 'label' }, ['Storage health']), el('div', { class: 'desc' }, ['Check local quota before importing large PGNs.'])]),
+        el('button', { class: 'btn btn-sm', on: { click: async () => { const est = global.OOSStore && await global.OOSStore.estimateStorage(); const mb = n => Math.round((Number(n || 0) / 1024 / 1024) * 10) / 10; global.OOSApp.toast(est ? `Storage used ${mb(est.usage)}MB of ${mb(est.quota)}MB` : 'Storage estimate unavailable', 'info'); } } }, ['Check quota']),
       ]),
     ]));
 
@@ -3282,7 +3325,7 @@
   // ----------------------------------------------------------------------
   // MULTI-STEP ONBOARDING
   // ----------------------------------------------------------------------
-  let onboardState = { step: 0, goal: null, level: null, white: null, black: null, importChoice: null };
+  let onboardState = { step: 0, goal: null, level: null, rating: '', white: null, black: null, importChoice: null };
 
   function renderOnboarding() {
     const card = document.getElementById('onboardCard');
@@ -3349,12 +3392,20 @@
   }
 
   function stepLevel() {
-    return pickerGroup('What level should we tune the UI for?', [
-      { v: 'beginner', label: 'Beginner',     desc: '800–1400 · friendly, low complexity' },
-      { v: 'club',     label: 'Club',         desc: '1400–2000 · productive, structured' },
-      { v: 'advanced', label: 'Advanced',     desc: '2000+ · powerful, dense' },
-      { v: 'titled',   label: 'Titled / Coach', desc: 'Full power, no guard rails' },
-    ], onboardState.level, v => onboardState.level = v);
+    const wrap = el('div', {}, [
+      pickerGroup('What level should we tune the UI for?', [
+        { v: 'beginner', label: 'Beginner',     desc: '800–1400 · friendly, low complexity' },
+        { v: 'club',     label: 'Club',         desc: '1400–2000 · productive, structured' },
+        { v: 'advanced', label: 'Advanced',     desc: '2000+ · powerful, dense' },
+        { v: 'titled',   label: 'Titled / Coach', desc: 'Full power, no guard rails' },
+      ], onboardState.level, v => onboardState.level = v),
+    ]);
+    const rating = el('label', { class: 'field', style: { marginTop: '16px' } }, [
+      el('span', {}, ['Current rating / Elo (optional)']),
+      el('input', { class: 'input', type: 'number', min: '100', max: '3500', placeholder: 'Example: 1650', value: onboardState.rating || '', on: { input: e => onboardState.rating = e.target.value } })
+    ]);
+    wrap.appendChild(rating);
+    return wrap;
   }
 
   function stepOpenings() {
@@ -3388,8 +3439,36 @@
     ], onboardState.importChoice, v => onboardState.importChoice = v);
   }
 
-  function stepPlan() {
-    const days = [
+  function onboardingPlanDays() {
+    const goal = onboardState.goal || 'first';
+    if (goal === 'fix') return [
+      'Day 1 — import recent games',
+      'Day 2 — review your first repair set',
+      'Day 3 — practice repeated opening mistakes',
+      'Day 4 — add missing opponent sidelines',
+      'Day 5 — test weak lines',
+      'Day 6 — study one model plan',
+      'Day 7 — run a 10-minute confidence review',
+    ];
+    if (goal === 'tournament') return [
+      'Day 1 — mark must-know lines',
+      'Day 2 — review recent mistakes',
+      'Day 3 — train only high-frequency positions',
+      'Day 4 — import latest games',
+      'Day 5 — repair dangerous sidelines',
+      'Day 6 — run tournament warmup',
+      'Day 7 — stop adding theory and build confidence',
+    ];
+    if (goal === 'coach') return [
+      'Day 1 — create a student workspace',
+      'Day 2 — assign one short line',
+      'Day 3 — add idea and warning notes',
+      'Day 4 — review student weak positions',
+      'Day 5 — import student games',
+      'Day 6 — create a repair assignment',
+      'Day 7 — export/share the coach pack',
+    ];
+    return [
       'Day 1 — learn the core line',
       'Day 2 — review and add the common sideline',
       'Day 3 — practice weak positions',
@@ -3398,6 +3477,10 @@
       'Day 6 — walk through one model game',
       'Day 7 — test yourself in tournament-warmup mode',
     ];
+  }
+
+  function stepPlan() {
+    const days = onboardingPlanDays();
     return el('div', {}, [
       el('h2', {}, ['Your first 7-day plan']),
       el('div', { class: 'muted', style: { marginBottom: '14px', fontSize: '13px' } }, [
@@ -3415,10 +3498,42 @@
   }
 
   function finishOnboarding() {
-    global.OOSData.setOnboarded();
+    const plan = {
+      goal: onboardState.goal || 'first',
+      level: onboardState.level || 'club',
+      rating: parseInt(onboardState.rating, 10) || 0,
+      white: onboardState.white || '?',
+      black: onboardState.black || '?',
+      importChoice: onboardState.importChoice || 'skip',
+      completedAt: Date.now(),
+      version: 2,
+    };
+    const DB = global.OOSData;
+    if (DB.setSetting) {
+      DB.setSetting('onboarding', plan);
+      DB.setSetting('playerLevel', plan.level);
+      DB.setSetting('studyGoal', plan.goal);
+      DB.setSetting('whiteRepertoireStart', plan.white);
+      DB.setSetting('blackVsE4Choice', plan.black);
+      DB.setSetting('recommendedImport', plan.importChoice);
+      if (plan.level === 'beginner') { DB.setSetting('boardSize', 'comfort'); DB.setSetting('defaultPracticeMode', 'learn'); }
+      if (plan.level === 'advanced' || plan.level === 'titled') { DB.setSetting('defaultPracticeMode', 'review'); }
+      if (plan.goal === 'tournament' && DB.setTournament) DB.setTournament(true);
+    }
+    DB.setOnboarded();
+    try {
+      const st = global.OOSAuthBridge && global.OOSAuthBridge.authState ? global.OOSAuthBridge.authState() : null;
+      const email = st && st.user && st.user.email ? String(st.user.email).toLowerCase() : '';
+      if (email) localStorage.setItem('oos.onboarding.account.' + email, JSON.stringify(plan));
+    } catch (_) {}
     document.getElementById('onboard').hidden = true;
-    global.OOSApp.toast('Plan ready — see you on Today', 'good');
-    global.OOSApp.go('today');
+    global.OOSApp.toast('Plan ready — your workspace is tuned for you', 'good');
+    if (plan.importChoice && plan.importChoice !== 'skip') {
+      global.OOSApp.go('games');
+      setTimeout(() => { if (global.OOSApp && global.OOSApp.toast) global.OOSApp.toast('Import is ready — choose ' + (plan.importChoice === 'chesscom' ? 'Chess.com' : plan.importChoice === 'lichess' ? 'Lichess' : 'PGN') + ' to continue.', 'info'); }, 350);
+    } else {
+      global.OOSApp.go('today');
+    }
   }
 
   // ----------------------------------------------------------------------

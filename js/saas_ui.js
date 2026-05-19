@@ -70,15 +70,7 @@
     ]);
     modal.appendChild(panel); document.body.appendChild(modal); setTimeout(() => base.querySelector('input').focus(), 30);
   }
-  function injectButton() {
-    if (document.getElementById('saasCenterBtn')) return;
-    const app = document.getElementById('app'); if (!app || document.body.dataset.view !== 'settings') return;
-    const target = app.querySelector('.settings-grid, .page, .view') || app.firstElementChild;
-    if (!target) return;
-    const card = el('section', { class: 'card assurance-panel' }, [el('h3', { text: 'Cloud Center' }), el('p', { class: 'muted', text: 'Connect your account, cloud sync, coach workspaces, sharing and imports.' }), el('button', { id: 'saasCenterBtn', class: 'btn btn-primary', on: { click: showModal } }, ['Open Cloud Center'])]);
-    target.appendChild(card);
-  }
-  const obs = new MutationObserver(injectButton);
-  window.addEventListener('DOMContentLoaded', () => { obs.observe(document.body, { childList: true, subtree: true }); injectButton(); });
+  function injectButton() { /* Player Settings owns cloud/account UX; no injected Cloud Center card. */ }
+  window.addEventListener('DOMContentLoaded', () => {});
   global.OOSCloudUI = { showModal, injectButton };
 })(window);

@@ -55,27 +55,8 @@
       wrapped.__settingsWrapped = true; global.OOSApp.startPractice = wrapped;
     }
   }
-  function appendSharingSettings() {
-    const app = document.getElementById('app'); if (!app || !(location.hash || '').includes('settings') || app.querySelector('[data-sharing-settings="true"]')) return;
-    const box = document.createElement('section'); box.className = 'card'; box.dataset.sharingSettings = 'true';
-    box.innerHTML = '<h2>Sharing and AI settings</h2><p class="muted">These settings now affect share-link permissions, local summaries, backend AI summaries, and screen-reader practice announcements.</p>';
-    const row = document.createElement('div'); row.className = 'row wrap';
-    [['privacy','select',['private','unlisted','public']], ['defaultPracticeMode','select',['daily','weak','learn','blind','speed','warmup']], ['notation','select',['san','lan','uci','figurine']]].forEach(([key,type,opts]) => {
-      const label = document.createElement('label'); label.className = 'field compact'; const span = document.createElement('span'); span.textContent = key;
-      const select = document.createElement('select'); select.className = 'input'; opts.forEach(o => { const option = document.createElement('option'); option.value = o; option.textContent = o; select.appendChild(option); }); select.value = setting(key, opts[0]); select.addEventListener('change', () => { DB().setSetting(key, select.value); }); label.append(span, select); row.appendChild(label);
-    });
-    [['revealOnWrong','Reveal answer after wrong move'], ['moveAnnouncements','Screen-reader move announcements'], ['aiSummaries','Backend AI summaries']].forEach(([key,text]) => {
-      const label = document.createElement('label'); label.className = 'check'; const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!setting(key, false); cb.addEventListener('change', () => DB().setSetting(key, cb.checked)); label.append(cb, document.createTextNode(' ' + text)); row.appendChild(label);
-    });
-    const share = document.createElement('button'); share.className = 'btn btn-sm'; share.textContent = 'Create profile share link'; share.type = 'button'; share.addEventListener('click', async () => {
-      try {
-        if (global.OOSSaaS && global.OOSSaaS.signedIn()) { const r = await global.OOSSaaS.createShareLink('profile', (global.OOSProfiles.active() || {}).id, { visibility: setting('privacy','private') }); alert('Hosted share created: ' + (r.url || r.token)); }
-        else { const s = DB().createShareSnapshot('profile', (global.OOSProfiles.active() || {}).id); alert('Local share snapshot created: ' + s.id); }
-      } catch (e) { alert(e.message); }
-    });
-    row.appendChild(share); box.appendChild(row); app.appendChild(box);
-  }
-  window.addEventListener('DOMContentLoaded', () => { ensureLive(); setTimeout(patchPractice, 0); setTimeout(appendSharingSettings, 200); });
-  window.addEventListener('hashchange', () => setTimeout(appendSharingSettings, 100));
+  function appendSharingSettings() { /* Merged into the main Settings page. */ }
+  window.addEventListener('DOMContentLoaded', () => { ensureLive(); setTimeout(patchPractice, 0); });
+  window.addEventListener('hashchange', () => {});
   global.OOSSettingsRuntime = { announce, notationMove, aiSummary, localSummary, summarizePosition };
 })(window);

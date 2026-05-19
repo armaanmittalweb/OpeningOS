@@ -5651,3 +5651,45 @@ html[data-board-size="analysis"] .chess-board { --board-size: min(78vh, 760px); 
   .wc-command-copy h1, .wc-rep-command h1, .wc-import-cockpit h1 { font-size:28px; }
   .wc-stat-card { min-height:auto; }
 }
+
+
+/* 2026-05-19 product settings/repertoire polish -------------------------------- */
+html[data-theme="light"] { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+html, body, #app, .card, .panel, .setting-group, .modal-panel, .rep-layout, .game-detail { transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+@media (prefers-reduced-motion: reduce) { html, body, #app, .card, .panel, .setting-group, .modal-panel { transition: none !important; } }
+.settings-clean-page { width: 100%; max-width: 1180px; margin: 0 auto; }
+.settings-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); gap: 16px; align-items: stretch; margin-bottom: 18px; }
+.settings-hero h2 { margin: 4px 0 6px; letter-spacing: -.035em; font-size: clamp(26px, 3vw, 38px); }
+.settings-sync-card { border: 1px solid var(--border); border-radius: 18px; background: color-mix(in oklab, var(--bg-2) 88%, transparent); padding: 14px; display: grid; gap: 6px; align-content: center; min-width: 0; }
+.settings-sync-card strong, .settings-sync-card small { overflow-wrap: anywhere; }
+.clean-settings-grid { align-items: start; }
+.settings-main-clean { display: grid; gap: 16px; min-width: 0; }
+.settings-main-clean .setting-group { overflow: hidden; }
+.settings-main-clean .setting-row { gap: 16px; align-items: center; }
+.danger-btn { color: var(--danger, #ff7777) !important; border-color: color-mix(in oklab, var(--danger, #ff7777) 35%, var(--border)) !important; }
+.danger-btn:hover { background: color-mix(in oklab, var(--danger, #ff7777) 12%, transparent) !important; }
+body[data-view="repertoire"] #app { overflow-x: hidden; }
+body[data-view="repertoire"] .rep-layout { display: grid !important; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(300px, 360px) !important; gap: 18px !important; align-items: start !important; }
+body[data-view="repertoire"] .rep-folders,
+body[data-view="repertoire"] .rep-main,
+body[data-view="repertoire"] .rep-aside { position: relative !important; min-width: 0 !important; max-width: 100% !important; z-index: auto !important; }
+body[data-view="repertoire"] .rep-main { overflow: visible !important; }
+body[data-view="repertoire"] .rep-aside { overflow: auto !important; max-height: calc(100vh - 150px); align-self: start; }
+body[data-view="repertoire"] .editor-grid { display: grid !important; grid-template-columns: minmax(380px, 1.1fr) minmax(260px, .9fr) !important; gap: 16px !important; align-items: start !important; }
+body[data-view="repertoire"] .line-header, body[data-view="repertoire"] .row-between { gap: 10px; flex-wrap: wrap; }
+body[data-view="repertoire"] .move-tree, body[data-view="repertoire"] .idea-card, body[data-view="repertoire"] .panel { overflow-wrap: anywhere; }
+@media (max-width: 1240px) {
+  body[data-view="repertoire"] .rep-layout { grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) !important; }
+  body[data-view="repertoire"] .rep-aside { grid-column: 1 / -1 !important; max-height: none !important; overflow: visible !important; }
+}
+@media (max-width: 920px) {
+  .settings-hero { grid-template-columns: 1fr; }
+  .clean-settings-grid { grid-template-columns: 1fr !important; }
+  .settings-side { position: static !important; display: flex; overflow-x: auto; gap: 8px; padding-bottom: 6px; }
+  .settings-side a { white-space: nowrap; }
+  body[data-view="repertoire"] .rep-layout { grid-template-columns: 1fr !important; }
+  body[data-view="repertoire"] .editor-grid { grid-template-columns: 1fr !important; }
+  body[data-view="repertoire"] .rep-folders { display: none !important; }
+  body[data-view="repertoire"] .rep-aside { grid-column: auto !important; }
+}
