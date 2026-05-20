@@ -3,7 +3,7 @@
  * Cache-first for static assets (CSS/JS/fonts) once they've been seen.
  * No external API calls are cached.
  */
-const VERSION = 'oos-v26-repertoire-studio-stable';
+const VERSION = 'oos-v27-repertoire-studio-product-grade';
 const STATIC_CACHE = 'oos-static-' + VERSION;
 
 const STATIC_ASSETS = [

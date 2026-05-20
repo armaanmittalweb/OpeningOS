@@ -33,7 +33,7 @@ for (const required of ['vendor/chess.min.js', 'js/product_auth.js', 'js/player_
   assert(index.includes(required), `index.html must load ${required}`);
 }
 assert(index.indexOf('js/world_class_product_core.js') > index.indexOf('js/app.js'), 'World-class core should load after app.js so it can enhance rendered pages');
-assert(sw.includes('oos-v26-repertoire-studio-stable'), 'Service worker cache version must be bumped for the world-class core release');
+assert(sw.includes('oos-v27-repertoire-studio-product-grade'), 'Service worker cache version must be bumped for the world-class core release');
 assert(sw.includes('./js/world_class_product_core.js'), 'Service worker must cache the world-class product core');
 assert(!fs.existsSync(path.join(root, 'Dockerfile')), 'Root Dockerfile must not exist; it can make DigitalOcean deploy the wrong component');
 assert(fs.existsSync(path.join(root, 'Dockerfile.frontend')), 'Frontend Dockerfile should remain renamed as Dockerfile.frontend');
@@ -82,7 +82,7 @@ for (const required of ['addFolder', 'updateFolder', 'deleteFolder', 'moveLineTo
 for (const required of ['buildVariationMap', 'rep-flow-map', 'Add branch here', 'Move line', 'notesDock', 'makeNotesPanelDraggable']) {
   assert(views.includes(required), `Repertoire premium workspace missing ${required}`);
 }
-for (const required of ['oos-v26-repertoire-studio-stable', 'rep-flow-map', 'notes-dock-floating', '--oos-rep-board-size', 'bs-close']) {
+for (const required of ['oos-v27-repertoire-studio-product-grade', 'rep-flow-map', 'notes-dock-floating', '--oos-rep-board-size', 'bs-close']) {
   assert(styles.includes(required) || sw.includes(required), `Workspace polish missing ${required}`);
 }
 const appJs = fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8');

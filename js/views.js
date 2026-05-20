@@ -334,357 +334,162 @@
 
   function renderRepertoire(app, opts = {}) {
     const DB = global.OOSData;
-    const lines = DB.lines();
+    const allLines = DB.lines ? DB.lines({ includeRetired: true }) : [];
+    const visibleLines = allLines.filter(l => l.status !== 'retired');
+    const lines = allLines.length ? allLines : visibleLines;
 
     app.innerHTML = '';
+    document.body.classList.remove('rep-board-focus');
 
     if (!lines.length) {
-      const ev = el('div', { class: 'empty large card', style: { maxWidth: '640px', margin: '40px auto' } }, [
-        el('div', { class: 'icon' }, [icon(ICONS.book, 22)]),
-        el('h3', {}, ['Your repertoire is empty']),
-        el('p', {}, ['Start with one opening. Pick a curated starter, paste a PGN, or build a line manually.']),
-        el('div', { class: 'actions' }, [
-          el('button', { class: 'btn btn-primary', on: { click: () => global.OOSApp.go('library') } }, ['Choose starter repertoire']),
-          el('button', { class: 'btn', on: { click: () => global.OOSApp.openImport() } }, [icon(ICONS.upload, 14), 'Paste PGN']),
-          el('button', { class: 'btn', on: { click: () => global.OOSViews.showLineCreationWizard(() => global.OOSApp.go('repertoire')) } }, ['Create manually']),
+      const empty = el('div', { class: 'rep-empty-studio' }, [
+        el('div', { class: 'rep-empty-card' }, [
+          el('div', { class: 'icon' }, [icon(ICONS.book, 24)]),
+          el('div', { class: 'eyebrow' }, ['Repertoire Studio']),
+          el('h2', {}, ['Build your first opening workspace']),
+          el('p', {}, ['Start with one practical line, attach the idea, then let practice and game imports turn it into memory.']),
+          el('div', { class: 'rep-empty-actions' }, [
+            el('button', { class: 'btn btn-primary', on: { click: () => global.OOSViews.showLineCreationWizard(() => global.OOSApp.go('repertoire')) } }, ['Create a line']),
+            el('button', { class: 'btn', on: { click: () => global.OOSApp.openImport() } }, [icon(ICONS.upload, 14), 'Import PGN']),
+            el('button', { class: 'btn', on: { click: () => global.OOSApp.go('library') } }, ['Browse starters']),
+          ]),
         ]),
       ]);
-      app.appendChild(ev);
+      app.appendChild(empty);
       return;
     }
 
-    if (!repState.selectedLineId || opts.lineId) {
-      repState.selectedLineId = opts.lineId || lines[0].id;
+    if (!repState.selectedLineId || opts.lineId || !DB.line(repState.selectedLineId)) {
+      repState.selectedLineId = opts.lineId || (visibleLines[0] || lines[0]).id;
       repState.currentPly = opts.ply != null ? opts.ply : 0;
     }
 
-    const layout = el('div', { class: 'rep-layout' });
+    const line = DB.line(repState.selectedLineId) || (visibleLines[0] || lines[0]);
+    if (!line) return;
+    if (line.id !== repState.selectedLineId) repState.selectedLineId = line.id;
+    if (opts.ply != null) repState.currentPly = opts.ply;
+    repState.currentPly = Math.max(0, Math.min(line.moves.length, repState.currentPly || 0));
 
-    // ---- Folder tree ---------------------------------------------------
-    const folders = el('aside', { class: 'rep-folders rep-folders-pro' });
-    folders.appendChild(el('div', { class: 'rep-folders-head' }, [
-      el('div', {}, [
-        el('div', { class: 'eyebrow' }, ['Opening folders']),
-        el('h3', {}, ['My preparation']),
-      ]),
-      el('button', { class: 'btn btn-sm', title: 'Create custom folder', on: { click: () => promptCreateFolder() } }, [icon(ICONS.add, 12), 'Folder']),
-    ]));
-    DB.repertoires().forEach(rep => {
-      const repLines = lines.filter(l => l.repId === rep.id);
-      const grp = el('div', { class: 'rep-folder-group' + (rep.custom ? ' is-custom' : ''), data: { folderId: rep.id } });
-      const folderActions = el('div', { class: 'rep-folder-actions' }, [
-        el('button', { class: 'btn btn-xs btn-ghost', title: 'Study this folder', on: { click: () => startFolderPractice(rep.id) } }, ['Study']),
-        el('button', { class: 'btn btn-xs btn-ghost', title: 'Export folder PGN', on: { click: () => exportFolderPgn(rep.id) } }, ['PGN']),
-        rep.custom ? el('button', { class: 'btn btn-xs btn-ghost', title: 'Rename folder', on: { click: () => promptRenameFolder(rep.id) } }, ['Rename']) : null,
-        rep.custom ? el('button', { class: 'btn btn-xs btn-ghost', title: 'Delete folder', on: { click: () => confirmDeleteFolder(rep.id) } }, ['Delete']) : null,
-      ].filter(Boolean));
-      grp.appendChild(el('div', { class: 'rep-folder-title' }, [
-        el('button', { class: 'rep-folder-name', on: { click: () => { if (repLines[0]) { repState.selectedLineId = repLines[0].id; repState.currentPly = 0; renderRepertoire(app); } } } }, [rep.name]),
-        el('span', { class: 'rep-folder-count' }, [String(repLines.length)]),
-      ]));
-      grp.appendChild(folderActions);
-      const list = el('div', { class: 'rep-folder-lines' });
-      if (!repLines.length) {
-        list.appendChild(el('div', { class: 'rep-empty-folder' }, ['No lines yet. Add or move a line here.']));
-      }
-      repLines.forEach(line => {
-        const dueCount = DB.positionsForLine(line.id).filter(p => { const s = DB.srs(p.id); return !s || new Date(s.dueAt || 0) <= new Date(); }).length;
-        list.appendChild(el('button', {
-          class: 'rep-line' + (line.id === repState.selectedLineId ? ' is-active' : '') + (line.parentLineId ? ' is-branch' : '') + (line.status === 'retired' ? ' is-retired' : ''),
-          data: { lineId: line.id },
-          title: line.name,
-          on: { click: () => { repState.selectedLineId = line.id; repState.currentPly = 0; renderRepertoire(app); } },
-        }, [
-          el('span', { class: 'rep-line-name' }, [line.name]),
-          el('span', { class: 'rep-line-meta' }, [
-            line.status === 'retired' ? 'retired' : (line.parentLineId ? 'branch' : tagLabel(line.tag)),
-            ' · ', String(DB.positionsForLine(line.id).length), ' moves',
-            dueCount ? ' · ' + dueCount + ' due' : '',
-          ]),
-        ]));
-      });
-      grp.appendChild(list);
-      folders.appendChild(grp);
-    });
-    folders.appendChild(el('div', { class: 'rep-folder-footer' }, [
-      el('button', {
-        class: 'btn btn-sm btn-primary',
-        on: { click: () => global.OOSViews.showLineCreationWizard(() => global.OOSApp.go('repertoire')) },
-      }, [icon(ICONS.add, 12), 'Add line']),
-      el('button', { class: 'btn btn-sm', on: { click: () => promptMoveLine(lineForMovePrompt()) } }, ['Move line']),
-    ]));
-
-    // ---- Main editor ---------------------------------------------------
-    const line = DB.line(repState.selectedLineId);
     const positions = DB.positionsForLine(line.id);
-    const main = el('div', { class: 'rep-main' });
+    const currentCard = positionAtPly(line, repState.currentPly);
+    const fenAtPly = computeFenAtPly(line, repState.currentPly);
+    const dueCount = positions.filter(p => { const st = DB.srs(p.id); return !st || new Date(st.dueAt || 0) <= new Date(); }).length;
+    const weakCount = positions.filter(p => { const st = DB.srs(p.id); return st && (st.lapses >= 2 || st.stability < 1.5); }).length;
+    const criticalCount = positions.filter(p => p.critical || (DB.notesFor(p.id).tags || []).includes('must-know')).length;
+    const foldersData = DB.repertoires ? DB.repertoires() : [];
+    const searchValue = repState.lineSearch || '';
+    const filterValue = repState.lineFilter || 'all';
 
-    main.appendChild(el('label', { class: 'mobile-line-picker' }, [
-      el('span', { class: 'label' }, ['Current line']),
-      el('select', {
-        class: 'input',
-        value: line.id,
-        on: { change: (e) => { repState.selectedLineId = e.target.value; repState.currentPly = 0; renderRepertoire(app); } },
-      }, lines.map(l => el('option', { value: l.id, selected: l.id === line.id }, [l.name + ' · ' + (l.color === 'w' ? 'White' : 'Black')]))),
-    ]));
+    const root = el('div', { class: 'rep-studio-pro', role: 'region', 'aria-label': 'Repertoire Studio' });
 
-    main.appendChild(el('div', { class: 'line-header' }, [
-      el('div', {}, [
-        el('div', { class: 'eyebrow' }, [line.eco + ' · ' + line.opening + ' · plays as ' + (line.color === 'w' ? 'White' : 'Black')]),
-        el('h2', { style: { marginTop: '4px' } }, [line.name]),
-        el('div', { class: 'subtitle' }, [line.description]),
-      ]),
-      el('div', { class: 'row', style: { gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [
-        buildLineQualityMeter(DB.lineQuality(line.id)),
-        el('div', { class: 'line-tags', style: { flexDirection: 'column', alignItems: 'flex-end', gap: '4px' } }, [
-          el('span', { class: 'pill ' + tagPillClass(line.tag) }, [tagLabel(line.tag)]),
-          el('span', { class: 'pill pill-info pill-plain' }, [String(positions.length) + ' prep moves']),
-        ]),
-        el('div', { class: 'row line-actions', style: { gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' } }, [
-          (DB.isUserLine && DB.isUserLine(line.id))
-            ? el('button', { class: 'btn btn-sm', on: { click: () => showLineCreationWizard(() => global.OOSApp.go('repertoire', { lineId: line.id }), line) } }, ['Edit'])
-            : el('button', { class: 'btn btn-sm', on: { click: () => { const copy = DB.duplicateLine(line.id); if (copy) { global.OOSApp.toast('Created an editable copy', 'good'); global.OOSApp.go('repertoire', { lineId: copy.id }); } } } }, ['Customize copy']),
-          (DB.isUserLine && DB.isUserLine(line.id))
-            ? el('button', { class: 'btn btn-sm', on: { click: () => { const copy = DB.duplicateLine(line.id); if (copy) { global.OOSApp.toast('Duplicated line', 'good'); global.OOSApp.go('repertoire', { lineId: copy.id }); } } } }, ['Duplicate'])
-            : null,
-          DB.getSetting && DB.getSetting('aiSummaries', false) && global.OOSAnalysis
-            ? el('button', { class: 'btn btn-sm', on: { click: () => showLineSummaryDialog(line) } }, ['AI/local summary'])
-            : null,
-          (DB.isUserLine && DB.isUserLine(line.id))
-            ? el('button', { class: 'btn btn-sm btn-ghost', on: { click: () => { if (confirm('Delete "' + line.name + '" from this profile? Imported games will become unmatched.')) { DB.deleteUserLine(line.id); global.OOSApp.toast('Line deleted', 'good'); repState.selectedLineId = null; global.OOSApp.go('repertoire'); } } } }, ['Delete'])
-            : null,
+    const titleText = line.name || 'Untitled line';
+    const hero = el('section', { class: 'rep-studio-hero' }, [
+      el('div', { class: 'rep-hero-copy' }, [
+        el('div', { class: 'eyebrow' }, ['Repertoire Studio']),
+        el('h1', { title: titleText }, [titleText]),
+        el('p', {}, [line.description || 'Study the position, grow clean branches, and train from exactly where your preparation matters.']),
+        el('div', { class: 'rep-hero-meta' }, [
+          el('span', { class: 'rep-chip' }, [line.eco || 'Line']),
+          el('span', { class: 'rep-chip' }, [line.opening || 'Opening']),
+          el('span', { class: 'rep-chip ' + tagPillClass(line.tag) }, [tagLabel(line.tag)]),
+          dueCount ? el('span', { class: 'rep-chip is-due' }, [String(dueCount) + ' due']) : null,
+          weakCount ? el('span', { class: 'rep-chip is-weak' }, [String(weakCount) + ' weak']) : null,
         ].filter(Boolean)),
       ]),
+      el('div', { class: 'rep-hero-actions' }, [
+        el('button', { class: 'btn btn-primary', on: { click: () => practiceFromCurrent(line, repState.currentPly) } }, ['Practice from here']),
+        el('button', { class: 'btn', on: { click: () => openPositionActionMenu(line, repState.currentPly) } }, ['Position actions']),
+        DB.isUserLine && DB.isUserLine(line.id)
+          ? el('button', { class: 'btn btn-ghost', on: { click: () => showLineCreationWizard(() => global.OOSApp.go('repertoire', { lineId: line.id }), line) } }, ['Edit line'])
+          : el('button', { class: 'btn btn-ghost', on: { click: () => { const copy = DB.duplicateLine(line.id); if (copy) global.OOSApp.go('repertoire', { lineId: copy.id }); } } }, ['Customize copy']),
+      ]),
+    ]);
+    root.appendChild(hero);
+
+    const workspace = el('div', { class: 'rep-studio-grid' });
+
+    // Sidebar: folders + line library
+    const side = el('aside', { class: 'rep-library-panel' });
+    side.appendChild(el('div', { class: 'rep-library-head' }, [
+      el('div', {}, [el('div', { class: 'eyebrow' }, ['Opening folders']), el('h2', {}, ['My preparation'])]),
+      el('button', { class: 'btn btn-sm', on: { click: () => promptCreateFolder() } }, [icon(ICONS.add, 12), 'Folder']),
+    ]));
+    side.appendChild(el('div', { class: 'rep-filter-card' }, [
+      el('input', { class: 'input rep-line-search', placeholder: 'Search lines, tags, ECO...', value: searchValue, on: { input: (e) => { repState.lineSearch = e.target.value; renderRepertoire(app); } } }),
+      el('div', { class: 'rep-filter-tabs' }, ['all','due','weak','critical','branches','retired'].map(f => el('button', {
+        class: 'rep-filter-tab' + (filterValue === f ? ' is-active' : ''),
+        on: { click: () => { repState.lineFilter = f; renderRepertoire(app); } },
+      }, [f === 'all' ? 'All' : f[0].toUpperCase() + f.slice(1)]))),
     ]));
 
-    // Editor grid: board + (move tree + idea card)
-    const grid = el('div', { class: 'editor-grid' });
+    foldersData.forEach(folder => {
+      const folderLines = allLines.filter(l => l.repId === folder.id).filter(l => linePassesFilter(l, searchValue, filterValue));
+      const folderBox = el('section', { class: 'rep-folder-box' + (folder.custom ? ' is-custom' : '') });
+      folderBox.appendChild(el('div', { class: 'rep-folder-box-head' }, [
+        el('button', { class: 'rep-folder-title-button', on: { click: () => { const first = folderLines[0]; if (first) global.OOSApp.go('repertoire', { lineId: first.id }); } } }, [folder.name]),
+        el('span', { class: 'rep-folder-count' }, [String(folderLines.length)]),
+      ]));
+      folderBox.appendChild(el('div', { class: 'rep-folder-tools' }, [
+        el('button', { class: 'btn btn-xs', on: { click: () => startFolderPractice(folder.id) } }, ['Study']),
+        el('button', { class: 'btn btn-xs', on: { click: () => exportFolderPgn(folder.id) } }, ['PGN']),
+        folder.custom ? el('button', { class: 'btn btn-xs', on: { click: () => promptRenameFolder(folder.id) } }, ['Rename']) : null,
+        folder.custom ? el('button', { class: 'btn btn-xs btn-ghost', on: { click: () => confirmDeleteFolder(folder.id) } }, ['Delete']) : null,
+      ].filter(Boolean)));
+      const lineList = el('div', { class: 'rep-line-list-pro' });
+      if (!folderLines.length) lineList.appendChild(el('div', { class: 'rep-empty-folder' }, ['No matching lines.']));
+      folderLines.forEach(l => lineList.appendChild(buildLineLibraryItem(l, line.id)));
+      folderBox.appendChild(lineList);
+      side.appendChild(folderBox);
+    });
+    side.appendChild(el('div', { class: 'rep-library-footer' }, [
+      el('button', { class: 'btn btn-sm btn-primary', on: { click: () => global.OOSViews.showLineCreationWizard(() => global.OOSApp.go('repertoire')) } }, [icon(ICONS.add, 12), 'New line']),
+      el('button', { class: 'btn btn-sm', on: { click: () => global.OOSApp.openImport() } }, [icon(ICONS.upload, 12), 'Import']),
+    ]));
+    workspace.appendChild(side);
 
-    const boardWrap = el('div', { class: 'stack repertoire-board-panel' });
-    const boardHost = el('div', { class: 'chess-board full repertoire-board-host' });
-    boardWrap.appendChild(boardHost);
+    // Main study workspace
+    const main = el('main', { class: 'rep-study-panel' });
+    const studyGrid = el('section', { class: 'rep-study-grid' });
 
-    const currentBoardSize = (DB.getSetting && (DB.getSetting('repertoireBoardSize') || DB.getSetting('repBoardSize') || DB.getSetting('boardSize'))) || 'comfort';
-    const setRepertoireBoardSize = (size) => {
-      document.documentElement.setAttribute('data-rep-board-size', size);
-      document.documentElement.setAttribute('data-board-size', size);
-      if (DB.setSetting) {
-        DB.setSetting('repertoireBoardSize', size);
-        DB.setSetting('repBoardSize', size);
-        DB.setSetting('boardSize', size);
-      }
-      global.OOSApp.toast('Board size set to ' + size, 'good');
-      renderRepertoire(app);
-    };
-    document.documentElement.setAttribute('data-rep-board-size', currentBoardSize);
-    const boardActions = el('div', { class: 'board-actions repertoire-board-actions', role: 'toolbar', 'aria-label': 'Repertoire board controls' }, [
+    const boardCard = el('div', { class: 'rep-board-card' });
+    const boardTop = el('div', { class: 'rep-card-head' }, [
+      el('div', {}, [el('div', { class: 'eyebrow' }, ['Board']), el('h3', {}, [repState.currentPly ? 'Position after ' + displayMove(line.moves[repState.currentPly - 1]) : 'Starting position'])]),
+      el('div', { class: 'rep-board-size-toggle', role: 'toolbar', 'aria-label': 'Board size' }, ['compact','comfort','analysis'].map(size => el('button', {
+        class: 'seg-btn' + (currentBoardSize() === size ? ' is-active' : ''),
+        on: { click: () => setRepertoireBoardSize(size, app) },
+      }, [size[0].toUpperCase() + size.slice(1)]))),
+    ]);
+    boardCard.appendChild(boardTop);
+    const boardHost = el('div', { class: 'chess-board full repertoire-board-host pro-board-host' });
+    boardCard.appendChild(boardHost);
+    boardCard.appendChild(el('div', { class: 'rep-board-controls' }, [
       el('button', { class: 'btn btn-sm', on: { click: () => repState.board && repState.board.flip() } }, [icon(ICONS.flip, 12), 'Flip']),
       el('button', { class: 'btn btn-sm', on: { click: () => stepMove(-1) } }, ['◀ Prev']),
       el('button', { class: 'btn btn-sm', on: { click: () => stepMove(1) } }, ['Next ▶']),
-      el('span', { class: 'board-action-sep' }, ['Board']),
-      el('button', { class: 'btn btn-sm' + (currentBoardSize === 'compact' ? ' is-active' : ''), title: 'Smaller board for cramped screens', on: { click: () => setRepertoireBoardSize('compact') } }, ['Compact']),
-      el('button', { class: 'btn btn-sm' + (currentBoardSize === 'comfort' || currentBoardSize === 'medium' ? ' is-active' : ''), title: 'Comfortable study size', on: { click: () => setRepertoireBoardSize('comfort') } }, ['Comfort']),
-      el('button', { class: 'btn btn-sm' + (currentBoardSize === 'analysis' ? ' is-active' : ''), title: 'Large analysis board', on: { click: () => setRepertoireBoardSize('analysis') } }, ['Analysis']),
-      el('button', { class: 'btn btn-sm', title: 'Focus only on the board and move list', on: { click: () => {
-        document.body.classList.toggle('rep-board-focus');
-        document.body.classList.remove('wc-board-focus');
-        global.OOSApp.toast(document.body.classList.contains('rep-board-focus') ? 'Board focus on' : 'Board focus off', 'info');
-      } } }, ['Focus board']),
-      el('button', { class: 'btn btn-sm btn-primary practice-from-here', on: { click: () => {
-        const cards = DB.cardsFromLine ? DB.cardsFromLine(line.id, repState.currentPly) : DB.positionsForLine(line.id);
-        global.OOSViews.startSessionWith(cards, { mode: 'daily' });
-      } } }, [icon(ICONS.bolt, 12), 'Practice from here']),
-    ]);
-    boardWrap.appendChild(boardActions);
-
-    grid.appendChild(boardWrap);
-
-    // Right column: move tree + idea card
-    const right = el('div', { class: 'stack' });
-
-    // Move tree
-    const moveTreeNode = el('div', { class: 'move-tree' }, [
-      el('div', { class: 'eyebrow', style: { marginBottom: '8px' } }, ['Main line']),
-      el('div', { class: 'moves' }, buildMoveTokens(line.moves, repState.currentPly, (i) => { repState.currentPly = i; renderRepertoire(app); })),
-    ]);
-    right.appendChild(moveTreeNode);
-    right.appendChild(buildLineSurgeryPanel(line, repState.currentPly));
-
-    // Idea card for current ply
-    const card = positionAtPly(line, repState.currentPly);
-    if (card) {
-      right.appendChild(buildIdeaCard(card, line));
-    } else {
-      right.appendChild(el('div', { class: 'idea-card empty' }, [
-        el('div', { class: 'icon' }, [icon(ICONS.book, 22)]),
-        el('h3', {}, ['Starting position']),
-        el('p', {}, ['Step into the line to see the idea cards for each prep position.']),
-      ]));
-    }
-
-    grid.appendChild(right);
-    main.appendChild(grid);
-
-    // Scroll-anchored bottom: progress strip
-    const positionsBar = el('div', { class: 'panel', style: { padding: '12px 16px' } }, [
-      el('div', { class: 'eyebrow', style: { marginBottom: '8px' } }, ['Progress in this line']),
-      el('div', { class: 'row', style: { gap: '4px', flexWrap: 'wrap' } },
-        positions.map(p => {
-          const srs = DB.srs(p.id);
-          let cls = 'cov-cell';
-          if (!srs || srs.stability < 1.5 || srs.lapses >= 2) cls += ' s-weak';
-          else if (srs.stability < 4) cls += ' s-medium';
-          else cls += ' s-strong';
-          return el('div', {
-            class: cls,
-            style: { width: '24px', aspectRatio: '1', position: 'relative' },
-            title: `Move ${p.ply}: ${p.move}`,
-            on: { click: () => { repState.currentPly = p.ply - 1; renderRepertoire(app); } },
-          });
-        })),
-    ]);
-    main.appendChild(positionsBar);
-    main.appendChild(buildVariationMap(line, repState.currentPly));
-
-    // ---- Aside: notes / metadata --------------------------------------
-    const notesDock = DB.getSetting ? DB.getSetting('notesDock', 'below') : 'below';
-    const aside = el('aside', { class: 'rep-aside notes-dock-' + notesDock });
-    aside.appendChild(el('div', { class: 'notes-pro-head' }, [
-      el('div', { class: 'notes-drag', title: notesDock === 'floating' ? 'Drag notes' : 'Notes dock' }, [
-        el('div', { class: 'eyebrow' }, ['Position notes']),
-        el('strong', {}, [card ? ('Move ' + card.ply) : 'Starting position']),
-      ]),
-      el('div', { class: 'notes-dock-controls' }, [
-        el('button', { class: 'btn btn-xs' + (notesDock === 'right' ? ' is-active' : ''), title: 'Dock right', on: { click: () => { DB.setSetting('notesDock', 'right'); renderRepertoire(app); } } }, ['Right']),
-        el('button', { class: 'btn btn-xs' + (notesDock === 'below' ? ' is-active' : ''), title: 'Move notes below', on: { click: () => { DB.setSetting('notesDock', 'below'); renderRepertoire(app); } } }, ['Below']),
-        el('button', { class: 'btn btn-xs' + (notesDock === 'floating' ? ' is-active' : ''), title: 'Float and drag notes', on: { click: () => { DB.setSetting('notesDock', 'floating'); renderRepertoire(app); } } }, ['Float']),
-      ]),
+      el('button', { class: 'btn btn-sm', on: { click: () => toggleBoardFocus() } }, ['Focus board']),
+      el('button', { class: 'btn btn-sm btn-primary', on: { click: () => practiceFromCurrent(line, repState.currentPly) } }, ['Practice']),
     ]));
+    studyGrid.appendChild(boardCard);
 
-    const noteData = card ? DB.notesFor(card.id) : { type: 'idea', text: '', tags: [] };
-
-    // Type chips
-    const noteTypes = [
-      { v: 'idea',    label: 'Idea' },
-      { v: 'warning', label: 'Warning' },
-      { v: 'memory',  label: 'Memory hint' },
-      { v: 'plan',    label: 'Plan' },
-      { v: 'tactical',label: 'Tactical' },
-      { v: 'coach',   label: 'Coach' },
-    ];
-    const typesRow = el('div', { class: 'note-types' });
-    noteTypes.forEach(t => {
-      typesRow.appendChild(el('span', {
-        class: 'note-type' + (noteData.type === t.v ? ' is-active' : ''),
-        on: { click: () => {
-          if (!card) return;
-          DB.setNote(card.id, { type: t.v });
-          renderRepertoire(app);
-        } },
-      }, [t.label]));
-    });
-    aside.appendChild(typesRow);
-
-    let noteSaveTimer = null;
-    const noteStatus = el('div', {
-      style: { fontSize: '11px', color: 'var(--text-3)', marginTop: '4px', minHeight: '14px' },
-    }, ['']);
-    const noteInput = el('textarea', {
-      class: 'input',
-      placeholder: card ? `${noteTypes.find(t => t.v === noteData.type)?.label || 'Note'}: write what matters here…` : 'Step to a position to add a note.',
-      disabled: !card,
-      on: {
-        input: (e) => {
-          if (!card) return;
-          // Debounce: defer save until 800ms of no typing, so history doesn't
-          // explode with one snapshot per keystroke.
-          noteStatus.textContent = 'Saving…';
-          if (noteSaveTimer) clearTimeout(noteSaveTimer);
-          const text = e.target.value;
-          noteSaveTimer = setTimeout(() => {
-            DB.setNote(card.id, { text });
-            noteStatus.textContent = 'Saved';
-            setTimeout(() => { if (noteStatus.textContent === 'Saved') noteStatus.textContent = ''; }, 1400);
-          }, 800);
-        },
-        blur: (e) => {
-          if (!card) return;
-          if (noteSaveTimer) clearTimeout(noteSaveTimer);
-          DB.setNote(card.id, { text: e.target.value });
-          noteStatus.textContent = 'Saved';
-          setTimeout(() => { if (noteStatus.textContent === 'Saved') noteStatus.textContent = ''; }, 1400);
-        },
-      },
-    });
-    noteInput.value = noteData.text || '';
-    aside.appendChild(noteInput);
-    aside.appendChild(noteStatus);
-
-    // Markdown preview + version history (only shown if we have a card)
-    if (card) {
-      const noteFooter = el('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } });
-      noteFooter.appendChild(el('button', {
-        class: 'btn btn-sm btn-ghost',
-        on: { click: () => {
-          const previewWrap = aside.querySelector('.note-preview');
-          if (previewWrap) { previewWrap.remove(); return; }
-          const pv = document.createElement('div');
-          pv.className = 'note-preview';
-          // Use the safe DOM-fragment renderer — avoids any innerHTML on user data.
-          if (global.OOSMarkdown && global.OOSMarkdown.renderToFragment) {
-            pv.appendChild(global.OOSMarkdown.renderToFragment(noteInput.value));
-          } else {
-            pv.textContent = noteInput.value;
-          }
-          aside.insertBefore(pv, noteFooter);
-        } },
-      }, ['Preview']));
-      const histCount = (noteData.history || []).length;
-      if (histCount > 0) {
-        noteFooter.appendChild(el('button', {
-          class: 'btn btn-sm btn-ghost',
-          on: { click: () => openHistoryDialog(card.id) },
-        }, [`History (${histCount})`]));
-      }
-      aside.appendChild(noteFooter);
-    }
-
-    // Tags row
-    if (card) {
-      const tagSuggestions = ['pawn-break', 'trap', 'must-know', 'endgame', 'memory-hook', 'coach', 'tournament'];
-      const tagsRow = el('div', { class: 'note-tags' });
-      tagSuggestions.forEach(t => {
-        const active = (noteData.tags || []).includes(t);
-        tagsRow.appendChild(el('span', {
-          class: 'note-tag' + (active ? ' is-active' : ''),
-          style: active ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : {},
-          on: { click: () => {
-            const tags = (noteData.tags || []).slice();
-            if (active) tags.splice(tags.indexOf(t), 1); else tags.push(t);
-            DB.setNote(card.id, { tags });
-            renderRepertoire(app);
-          } },
-        }, ['#' + t]));
-      });
-      aside.appendChild(tagsRow);
-    }
-
-    aside.appendChild(el('div', { class: 'eyebrow', style: { marginTop: '20px', marginBottom: '8px' } }, ['Real games']));
-    aside.appendChild(el('div', { class: 'panel', style: { padding: '12px' } }, [
-      el('div', { class: 'mono', style: { fontSize: '12px', color: 'var(--text-2)' } }, ['Times this line appeared: ' + lineGameCount(line.id)]),
-      el('div', { style: { marginTop: '6px' } }, [
-        el('a', { href: '#games', class: 'mono', style: { color: 'var(--accent)', fontSize: '12px' }, on: { click: (e) => { e.preventDefault(); global.OOSApp.go('games', { lineId: line.id }); } } }, ['View games →']),
-      ]),
+    const sideCard = el('div', { class: 'rep-position-panel' });
+    sideCard.appendChild(el('div', { class: 'rep-card-head' }, [
+      el('div', {}, [el('div', { class: 'eyebrow' }, ['Current position']), el('h3', {}, [currentCard ? 'Move ' + currentCard.ply : 'Start'])]),
+      buildLineQualityMeter(DB.lineQuality(line.id)),
     ]));
+    sideCard.appendChild(buildMovesCard(line));
+    sideCard.appendChild(buildCurrentIdeaSummary(currentCard, line));
+    sideCard.appendChild(buildPositionToolsPro(line, repState.currentPly));
+    studyGrid.appendChild(sideCard);
+    main.appendChild(studyGrid);
 
-    layout.appendChild(folders);
-    layout.appendChild(main);
-    layout.appendChild(aside);
-    app.appendChild(layout);
-    if (notesDock === 'floating') makeNotesPanelDraggable(aside);
+    main.appendChild(buildVariationTreePro(line, repState.currentPly));
+    main.appendChild(buildLineProgressPro(line, positions));
+    main.appendChild(buildNotesPanelPro(currentCard, line));
+    workspace.appendChild(main);
 
-    // Mount the board now that DOM is in place.
-    const fenAtPly = computeFenAtPly(line, repState.currentPly);
+    root.appendChild(workspace);
+    app.appendChild(root);
+
     repState.board = new global.OOSBoard(boardHost, {
       fen: fenAtPly,
       orientation: line.color === 'b' ? 'black' : 'white',
@@ -699,10 +504,392 @@
 
     function stepMove(delta) {
       const next = Math.max(0, Math.min(line.moves.length, repState.currentPly + delta));
-      if (next !== repState.currentPly) { repState.currentPly = next; renderRepertoire(app); }
+      if (next !== repState.currentPly) global.OOSApp.go('repertoire', { lineId: line.id, ply: next });
     }
   }
 
+  function currentBoardSize() {
+    const DB = global.OOSData;
+    return (DB.getSetting && (DB.getSetting('repertoireBoardSize') || DB.getSetting('repBoardSize') || DB.getSetting('boardSize'))) || 'comfort';
+  }
+
+  function setRepertoireBoardSize(size, app) {
+    const DB = global.OOSData;
+    document.documentElement.setAttribute('data-rep-board-size', size);
+    document.documentElement.setAttribute('data-board-size', size);
+    if (DB.setSetting) {
+      DB.setSetting('repertoireBoardSize', size);
+      DB.setSetting('repBoardSize', size);
+      DB.setSetting('boardSize', size);
+    }
+    global.OOSApp.toast('Board size set to ' + size + '.', 'good');
+    renderRepertoire(app || document.getElementById('app'));
+  }
+
+  function toggleBoardFocus() {
+    document.body.classList.toggle('rep-board-focus');
+    const on = document.body.classList.contains('rep-board-focus');
+    global.OOSApp.toast(on ? 'Board focus on. Press Focus board again to exit.' : 'Board focus off.', 'good');
+  }
+
+  function linePassesFilter(line, query, filter) {
+    const DB = global.OOSData;
+    const q = String(query || '').trim().toLowerCase();
+    if (q) {
+      const hay = [line.name, line.opening, line.eco, line.tag, line.description].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (filter === 'retired') return line.status === 'retired';
+    if (line.status === 'retired') return false;
+    if (filter === 'branches') return !!line.parentLineId;
+    const positions = DB.positionsForLine(line.id);
+    if (filter === 'due') return positions.some(p => { const s = DB.srs(p.id); return !s || new Date(s.dueAt || 0) <= new Date(); });
+    if (filter === 'weak') return positions.some(p => { const s = DB.srs(p.id); return s && (s.lapses >= 2 || s.stability < 1.5); });
+    if (filter === 'critical') return positions.some(p => p.critical || (DB.notesFor(p.id).tags || []).includes('must-know'));
+    return true;
+  }
+
+  function buildLineLibraryItem(line, selectedId) {
+    const DB = global.OOSData;
+    const positions = DB.positionsForLine(line.id);
+    const due = positions.filter(p => { const s = DB.srs(p.id); return !s || new Date(s.dueAt || 0) <= new Date(); }).length;
+    const weak = positions.filter(p => { const s = DB.srs(p.id); return s && (s.lapses >= 2 || s.stability < 1.5); }).length;
+    return el('button', {
+      class: 'rep-line-pro' + (line.id === selectedId ? ' is-active' : '') + (line.parentLineId ? ' is-branch' : '') + (line.status === 'retired' ? ' is-retired' : ''),
+      title: line.name,
+      on: { click: () => global.OOSApp.go('repertoire', { lineId: line.id, ply: 0 }) },
+    }, [
+      el('span', { class: 'rep-line-pro-title' }, [line.name]),
+      el('span', { class: 'rep-line-pro-meta' }, [
+        line.status === 'retired' ? 'Retired' : (line.parentLineId ? 'Branch' : tagLabel(line.tag)),
+        ' · ', String(positions.length), ' prep moves', due ? ' · ' + due + ' due' : '', weak ? ' · ' + weak + ' weak' : '',
+      ]),
+    ]);
+  }
+
+  function buildMovesCard(line) {
+    return el('div', { class: 'rep-mini-card rep-moves-card' }, [
+      el('div', { class: 'rep-mini-title' }, ['Move list']),
+      el('div', { class: 'moves rep-move-list-pro' }, buildMoveTokens(line.moves, repState.currentPly, (i) => { global.OOSApp.go('repertoire', { lineId: line.id, ply: i }); })),
+    ]);
+  }
+
+  function buildCurrentIdeaSummary(card, line) {
+    const DB = global.OOSData;
+    if (!card) {
+      return el('div', { class: 'rep-mini-card rep-idea-summary' }, [
+        el('div', { class: 'rep-mini-title' }, ['Idea']),
+        el('p', {}, ['Choose a move in the line to see the prepared idea, plan, and memory hook.']),
+      ]);
+    }
+    const idea = DB.positionIdea ? DB.positionIdea(card.id) : null;
+    const note = DB.notesFor(card.id);
+    const ideaText = (idea && (idea.idea || idea.plan || idea.hook)) || note.text || 'Add why this move belongs in your repertoire.';
+    return el('div', { class: 'rep-mini-card rep-idea-summary' }, [
+      el('div', { class: 'rep-mini-title' }, ['Idea card']),
+      el('strong', {}, [displayMove(card.move)]),
+      el('p', {}, [ideaText]),
+      el('button', { class: 'btn btn-sm', on: { click: () => showIdeaEditor(card, line) } }, ['Edit idea']),
+    ]);
+  }
+
+  function buildPositionToolsPro(line, currentPly) {
+    const editable = global.OOSData.isUserLine && global.OOSData.isUserLine(line.id);
+    const card = positionAtPly(line, currentPly);
+    return el('div', { class: 'rep-mini-card rep-tools-pro' }, [
+      el('div', { class: 'rep-mini-title' }, ['Position actions']),
+      el('div', { class: 'rep-tool-grid' }, [
+        el('button', { class: 'btn btn-sm btn-primary', on: { click: () => practiceFromCurrent(line, currentPly) } }, ['Practice from here']),
+        el('button', { class: 'btn btn-sm', on: { click: () => openMoveComposer({ mode: 'reply', line, currentPly }) } }, ['Add opponent reply']),
+        el('button', { class: 'btn btn-sm', on: { click: () => openMoveComposer({ mode: 'variation', line, currentPly }) } }, ['Add side variation']),
+        el('button', { class: 'btn btn-sm', on: { click: () => openMoveComposer({ mode: 'insert', line, currentPly }) } }, ['Insert move here']),
+        currentPly > 0 ? el('button', { class: 'btn btn-sm btn-ghost', on: { click: () => removeMoveFromLine(line, currentPly) } }, ['Remove current']) : null,
+        el('button', { class: 'btn btn-sm', on: { click: () => card ? toggleCritical(card, line) : global.OOSApp.toast('Step to a position first.', 'warn') } }, ['Mark critical']),
+        el('button', { class: 'btn btn-sm', on: { click: () => card ? showIdeaEditor(card, line) : global.OOSApp.toast('Step to a position first.', 'warn') } }, ['Add idea']),
+        editable ? el('button', { class: 'btn btn-sm', on: { click: () => splitLineHere(line, currentPly) } }, ['Split line']) : null,
+        editable ? el('button', { class: 'btn btn-sm btn-ghost', on: { click: () => toggleLineRetired(line, currentPly) } }, [line.status === 'retired' ? 'Restore line' : 'Retire line']) : null,
+        el('button', { class: 'btn btn-sm', on: { click: () => showTranspositionsAt(line, currentPly) } }, ['Transpositions']),
+      ].filter(Boolean)),
+    ]);
+  }
+
+  function buildLineProgressPro(line, positions) {
+    return el('section', { class: 'rep-progress-pro' }, [
+      el('div', { class: 'rep-section-head' }, [el('div', { class: 'eyebrow' }, ['Progress']), el('h3', {}, ['Retention map'])]),
+      el('div', { class: 'rep-progress-strip' }, positions.map(p => {
+        const srs = global.OOSData.srs(p.id);
+        let cls = 'cov-cell';
+        if (!srs || srs.stability < 1.5 || srs.lapses >= 2) cls += ' s-weak';
+        else if (srs.stability < 4) cls += ' s-medium';
+        else cls += ' s-strong';
+        return el('button', { class: cls, title: `Move ${p.ply}: ${p.move}`, on: { click: () => global.OOSApp.go('repertoire', { lineId: line.id, ply: p.ply }) } });
+      })),
+    ]);
+  }
+
+  function buildNotesPanelPro(card, line) {
+    const DB = global.OOSData;
+    const note = card ? DB.notesFor(card.id) : { type: 'idea', text: '', tags: [] };
+    const panel = el('section', { class: 'rep-notes-pro' }, [
+      el('div', { class: 'rep-section-head' }, [
+        el('div', {}, [el('div', { class: 'eyebrow' }, ['Position notes']), el('h3', {}, [card ? 'Move ' + card.ply + ' notes' : 'Starting position'])]),
+      ]),
+    ]);
+    const noteTypes = [
+      { v: 'idea', label: 'Idea' }, { v: 'plan', label: 'Plan' }, { v: 'memory', label: 'Memory hook' },
+      { v: 'warning', label: 'Warning' }, { v: 'tactical', label: 'Tactical' }, { v: 'coach', label: 'Coach' },
+    ];
+    const typeRow = el('div', { class: 'note-types' });
+    noteTypes.forEach(t => typeRow.appendChild(el('button', { class: 'note-type' + (note.type === t.v ? ' is-active' : ''), on: { click: () => { if (card) { DB.setNote(card.id, { type: t.v }); global.OOSApp.go('repertoire', { lineId: line.id, ply: card.ply }); } } } }, [t.label])));
+    panel.appendChild(typeRow);
+    const status = el('span', { class: 'rep-note-status' }, ['']);
+    let saveTimer = null;
+    const ta = el('textarea', { class: 'input rep-note-textarea', disabled: !card, placeholder: card ? 'Write the useful idea, plan or warning here…' : 'Choose a position to add a note.', on: { input: (e) => {
+      if (!card) return;
+      status.textContent = 'Saving…';
+      if (saveTimer) clearTimeout(saveTimer);
+      const value = e.target.value;
+      saveTimer = setTimeout(() => { DB.setNote(card.id, { text: value }); status.textContent = 'Saved'; setTimeout(() => { status.textContent = ''; }, 1200); }, 600);
+    }, blur: (e) => { if (card) { if (saveTimer) clearTimeout(saveTimer); DB.setNote(card.id, { text: e.target.value }); status.textContent = 'Saved'; setTimeout(() => { status.textContent = ''; }, 1200); } } } });
+    ta.value = note.text || '';
+    panel.appendChild(ta);
+    panel.appendChild(el('div', { class: 'rep-note-footer' }, [status, card ? el('button', { class: 'btn btn-sm', on: { click: () => showIdeaEditor(card, line) } }, ['Structured idea']) : null].filter(Boolean)));
+    return panel;
+  }
+
+
+  function rootLineFor(line) {
+    const DB = global.OOSData;
+    let cur = line;
+    const seen = new Set();
+    while (cur && cur.parentLineId && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      cur = DB.line(cur.parentLineId) || cur;
+      if (!cur.parentLineId) break;
+    }
+    return cur || line;
+  }
+
+  function familyLines(rootId) {
+    const DB = global.OOSData;
+    const all = DB.lines ? DB.lines({ includeRetired: true }) : [];
+    const out = [];
+    function walk(id, depth) {
+      all.filter(l => l.id === id || l.parentLineId === id).forEach(l => {
+        if (out.some(x => x.id === l.id)) return;
+        l.__depth = depth;
+        out.push(l);
+        walk(l.id, depth + 1);
+      });
+    }
+    walk(rootId, 0);
+    return out;
+  }
+
+  function buildVariationMap(line, currentPly) { return buildVariationTreePro(line, currentPly); }
+
+  function makeNotesPanelDraggable() { /* notesDock legacy: notes are now safely docked in the studio, no overlay by default. */ }
+
+  function buildVariationTreePro(line, currentPly) {
+    const DB = global.OOSData;
+    const root = rootLineFor(line);
+    const family = familyLines(root.id).sort((a, b) => (a.__depth || 0) - (b.__depth || 0) || (a.branchFromPly || 0) - (b.branchFromPly || 0));
+    const branches = family.filter(l => l.id !== root.id);
+    const panel = el('section', { class: 'rep-tree-pro' }, [
+      el('div', { class: 'rep-section-head' }, [
+        el('div', {}, [el('div', { class: 'eyebrow' }, ['Variation tree']), el('h3', {}, [root.name]), el('p', {}, ['Branches grow from exact positions. Click a move or branch to inspect it on the board.'])]),
+        el('button', { class: 'btn btn-sm btn-primary', on: { click: () => openMoveComposer({ mode: 'variation', line, currentPly }) } }, ['Add branch here']),
+      ]),
+    ]);
+    const trunk = el('div', { class: 'rep-tree-trunk' });
+    (root.moves || []).forEach((mv, idx) => {
+      trunk.appendChild(el('button', { class: 'tree-node' + (line.id === root.id && currentPly === idx + 1 ? ' is-current' : ''), on: { click: () => global.OOSApp.go('repertoire', { lineId: root.id, ply: idx + 1 }) } }, [el('span', {}, [String(idx + 1)]), displayMove(mv)]));
+    });
+    panel.appendChild(trunk);
+    const branchGrid = el('div', { class: 'rep-tree-branches' });
+    if (!branches.length) branchGrid.appendChild(el('div', { class: 'tree-empty' }, ['No branches yet. Add one from the position you want to prepare.']));
+    branches.forEach(branch => {
+      const preview = (branch.moves || []).slice(Math.max(0, branch.branchFromPly || 0), Math.max(0, (branch.branchFromPly || 0) + 6)).map(displayMove).join(' ');
+      branchGrid.appendChild(el('article', { class: 'tree-branch-card' + (branch.id === line.id ? ' is-active' : '') + (branch.status === 'retired' ? ' is-retired' : '') }, [
+        el('div', { class: 'branch-card-top' }, [el('span', { class: 'rep-chip' }, ['after ' + (branch.branchFromPly || 0)]), el('strong', {}, [branch.name])]),
+        el('p', {}, [preview || 'Continuation branch']),
+        el('div', { class: 'branch-card-actions' }, [
+          el('button', { class: 'btn btn-xs btn-primary', on: { click: () => global.OOSApp.go('repertoire', { lineId: branch.id, ply: branch.branchFromPly || 0 }) } }, ['View']),
+          el('button', { class: 'btn btn-xs', on: { click: () => promptMoveLine(branch) } }, ['Move']),
+          DB.isUserLine && DB.isUserLine(branch.id) ? el('button', { class: 'btn btn-xs', on: { click: () => showLineCreationWizard(() => global.OOSApp.go('repertoire', { lineId: branch.id }), branch) } }, ['Edit']) : null,
+          DB.isUserLine && DB.isUserLine(branch.id) ? el('button', { class: 'btn btn-xs btn-ghost', on: { click: () => deleteBranch(branch, root) } }, ['Delete']) : null,
+        ].filter(Boolean)),
+      ]));
+    });
+    panel.appendChild(branchGrid);
+    return panel;
+  }
+
+  function openPositionActionMenu(line, currentPly) {
+    const wrap = el('div', { class: 'modal rep-action-modal' });
+    const back = el('div', { class: 'modal-back' });
+    const panel = el('div', { class: 'modal-panel rep-action-panel' });
+    panel.appendChild(el('div', { class: 'eyebrow' }, ['Position actions']));
+    panel.appendChild(el('h3', {}, [line.name]));
+    panel.appendChild(el('p', { class: 'muted' }, ['Choose what to do from this exact board position.']));
+    const close = () => wrap.remove();
+    const actions = [
+      ['Practice from here', () => practiceFromCurrent(line, currentPly)],
+      ['Add opponent reply on board', () => openMoveComposer({ mode: 'reply', line, currentPly })],
+      ['Add side variation on board', () => openMoveComposer({ mode: 'variation', line, currentPly })],
+      ['Insert move on board', () => openMoveComposer({ mode: 'insert', line, currentPly })],
+      ['Mark critical', () => { const c = positionAtPly(line, currentPly); if (c) toggleCritical(c, line); }],
+      ['Edit idea card', () => { const c = positionAtPly(line, currentPly); if (c) showIdeaEditor(c, line); }],
+      ['Split line here', () => splitLineHere(line, currentPly)],
+      [line.status === 'retired' ? 'Restore line' : 'Retire line', () => toggleLineRetired(line, currentPly)],
+      ['Show transpositions', () => showTranspositionsAt(line, currentPly)],
+    ];
+    panel.appendChild(el('div', { class: 'rep-action-list' }, actions.map(a => el('button', { class: 'rep-action-button', on: { click: () => { close(); a[1](); } } }, [a[0]]))));
+    panel.appendChild(el('button', { class: 'btn', on: { click: close } }, ['Close']));
+    back.addEventListener('click', close);
+    wrap.appendChild(back); wrap.appendChild(panel); document.body.appendChild(wrap);
+  }
+
+  function openMoveComposer({ mode, line, currentPly }) {
+    const DB = global.OOSData;
+    if (!(DB.isUserLine && DB.isUserLine(line.id)) && mode !== 'variation') {
+      const copy = DB.duplicateLine(line.id);
+      if (copy) return global.OOSApp.go('repertoire', { lineId: copy.id, ply: currentPly });
+    }
+    const startFen = computeFenAtPly(line, currentPly);
+    const moves = [];
+    const wrap = el('div', { class: 'modal rep-composer-modal' });
+    const back = el('div', { class: 'modal-back' });
+    const panel = el('div', { class: 'modal-panel rep-composer-panel' });
+    const title = mode === 'insert' ? 'Insert a move on the board' : mode === 'reply' ? 'Add opponent reply' : 'Add side variation';
+    panel.appendChild(el('div', { class: 'eyebrow' }, ['Board composer']));
+    panel.appendChild(el('h3', {}, [title]));
+    panel.appendChild(el('p', { class: 'muted' }, ['Play moves on the board. The move list below becomes the new branch. SAN entry is optional for power users.']));
+    const boardHost = el('div', { class: 'chess-board full composer-board' });
+    const moveList = el('div', { class: 'composer-moves' }, ['No moves yet.']);
+    panel.appendChild(boardHost);
+    panel.appendChild(moveList);
+    const sanInput = el('input', { class: 'input', placeholder: 'Optional: type SAN, e.g. Nf3, and press Enter', on: { keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); playSan(); } } } });
+    panel.appendChild(el('div', { class: 'composer-san-row' }, [sanInput, el('button', { class: 'btn', on: { click: () => playSan() } }, ['Play SAN'])]));
+    panel.appendChild(el('input', { class: 'input composer-name', placeholder: 'Branch name (optional)' }));
+    const composerBoard = new global.OOSBoard(boardHost, {
+      fen: startFen,
+      orientation: line.color === 'b' ? 'black' : 'white',
+      interactive: true,
+      showCoords: DB.getSetting('coords', true),
+      onMove: (m) => { moves.push(m.san); renderComposerMoves(); },
+    });
+    function renderComposerMoves() { moveList.textContent = moves.length ? moves.join(' ') : 'No moves yet.'; }
+    function playSan() {
+      const san = sanInput.value.trim();
+      if (!san) return;
+      const m = composerBoard.move(san);
+      if (!m) { global.OOSApp.toast('That move is not legal in this position.', 'bad'); return; }
+      moves.push(m.san); sanInput.value = ''; renderComposerMoves();
+    }
+    function create() {
+      if (!moves.length) return global.OOSApp.toast('Play at least one move first.', 'warn');
+      const name = (panel.querySelector('.composer-name')?.value || '').trim();
+      let result = null;
+      if (mode === 'insert') {
+        result = DB.insertMoveAt(line.id, currentPly, moves[0]);
+        if (!result || !result.ok) return global.OOSApp.toast((result && result.error) || 'Could not insert move.', 'bad');
+        wrap.remove(); global.OOSApp.toast('Move inserted.', 'good'); return global.OOSApp.go('repertoire', { lineId: line.id, ply: currentPly + 1 });
+      }
+      if (mode === 'reply' && moves.length === 1 && DB.addOpponentReplyFromPosition) {
+        result = DB.addOpponentReplyFromPosition(line.id, currentPly, moves[0], { name: name || line.name + ' — ' + moves[0] + ' sideline' });
+      } else {
+        result = DB.addSideVariation(line.id, currentPly, moves.join(' '), { name: name || line.name + ' — variation from move ' + currentPly });
+      }
+      if (!result) return global.OOSApp.toast('Could not create branch from these moves.', 'bad');
+      wrap.remove(); global.OOSApp.toast('Branch added.', 'good'); global.OOSApp.go('repertoire', { lineId: result.id, ply: Math.max(currentPly, 1) });
+    }
+    panel.appendChild(el('div', { class: 'composer-actions' }, [
+      el('button', { class: 'btn', on: { click: () => wrap.remove() } }, ['Cancel']),
+      el('button', { class: 'btn btn-primary', on: { click: create } }, [mode === 'insert' ? 'Insert move' : 'Create branch']),
+    ]));
+    back.addEventListener('click', () => wrap.remove());
+    wrap.appendChild(back); wrap.appendChild(panel); document.body.appendChild(wrap); sanInput.focus();
+  }
+
+  function practiceFromCurrent(line, currentPly) {
+    global.OOSApp.go('practice', { mode: 'from-line', lineId: line.id, startPly: currentPly });
+  }
+
+  function removeMoveFromLine(line, currentPly) {
+    const DB = global.OOSData;
+    if (currentPly <= 0) return;
+    if (!confirm('Remove move ' + currentPly + ' from this line? Later illegal moves may be trimmed.')) return;
+    const res = DB.removeMoveAt(line.id, currentPly);
+    if (!res || !res.ok) return global.OOSApp.toast((res && res.error) || 'Could not remove move.', 'bad');
+    global.OOSApp.toast(res.truncatedAt ? 'Move removed; later illegal moves were trimmed.' : 'Move removed.', res.truncatedAt ? 'warn' : 'good');
+    global.OOSApp.go('repertoire', { lineId: line.id, ply: Math.max(0, currentPly - 1) });
+  }
+
+  function splitLineHere(line, currentPly) {
+    const branch = global.OOSData.splitLineFromPly && global.OOSData.splitLineFromPly(line.id, currentPly, { truncateOriginal: false });
+    if (!branch) return global.OOSApp.toast('Could not split line here.', 'bad');
+    global.OOSApp.toast('Split branch created.', 'good');
+    global.OOSApp.go('repertoire', { lineId: branch.id, ply: currentPly });
+  }
+
+  function toggleLineRetired(line, currentPly) {
+    const on = line.status !== 'retired';
+    global.OOSData.setLineRetired(line.id, on, on ? 'Retired by user' : 'Restored by user');
+    global.OOSApp.toast(on ? 'Line retired.' : 'Line restored.', 'good');
+    global.OOSApp.go('repertoire', { lineId: line.id, ply: currentPly });
+  }
+
+  function toggleCritical(card, line) {
+    const DB = global.OOSData;
+    if (DB.setPositionCritical) DB.setPositionCritical(card.id, !card.critical);
+    const note = DB.notesFor(card.id);
+    const tags = new Set(note.tags || []);
+    if (tags.has('must-know')) tags.delete('must-know'); else tags.add('must-know');
+    DB.setNote(card.id, { tags: Array.from(tags) });
+    global.OOSApp.toast('Critical marker updated.', 'good');
+    global.OOSApp.go('repertoire', { lineId: line.id, ply: card.ply });
+  }
+
+  function showTranspositionsAt(line, currentPly) {
+    const card = positionAtPly(line, currentPly);
+    const trans = card ? global.OOSData.transpositionsFor(card.fen, line.id) : [];
+    if (!trans.length) return global.OOSApp.toast('No known transpositions here yet.', 'info');
+    const wrap = el('div', { class: 'modal' });
+    const back = el('div', { class: 'modal-back' });
+    const panel = el('div', { class: 'modal-panel' });
+    panel.appendChild(el('h3', {}, ['Transpositions']));
+    trans.slice(0, 8).forEach(t => panel.appendChild(el('button', { class: 'rep-action-button', on: { click: () => { wrap.remove(); global.OOSApp.go('repertoire', { lineId: t.lineId, ply: t.ply - 1 }); } } }, [t.lineName + ' · move ' + t.ply])));
+    panel.appendChild(el('button', { class: 'btn', on: { click: () => wrap.remove() } }, ['Close']));
+    back.addEventListener('click', () => wrap.remove()); wrap.appendChild(back); wrap.appendChild(panel); document.body.appendChild(wrap);
+  }
+
+  function deleteBranch(branch, root) {
+    if (!confirm('Delete this branch? Your main line remains safe.')) return;
+    global.OOSData.deleteUserLine(branch.id);
+    global.OOSApp.toast('Branch deleted.', 'good');
+    global.OOSApp.go('repertoire', { lineId: root.id });
+  }
+
+  function showIdeaEditor(card, line) {
+    const DB = global.OOSData;
+    const idea = (DB.positionIdea && DB.positionIdea(card.id)) || {};
+    const wrap = el('div', { class: 'modal rep-idea-modal' });
+    const back = el('div', { class: 'modal-back' });
+    const panel = el('div', { class: 'modal-panel' });
+    panel.appendChild(el('div', { class: 'eyebrow' }, ['Structured idea card']));
+    panel.appendChild(el('h3', {}, ['Move ' + card.ply + ': ' + displayMove(card.move)]));
+    const fields = [
+      ['idea', 'Why this move?'], ['plan', 'Plan'], ['hook', 'Memory hook'], ['warning', 'Common mistake / warning'], ['source', 'Source'],
+    ];
+    const inputs = {};
+    fields.forEach(([key, label]) => { inputs[key] = el('textarea', { class: 'input', placeholder: label, style: { minHeight: key === 'idea' ? '72px' : '46px' } }); inputs[key].value = idea[key] || ''; panel.appendChild(el('label', { class: 'idea-edit-field' }, [el('span', { class: 'label' }, [label]), inputs[key]])); });
+    panel.appendChild(el('div', { class: 'composer-actions' }, [
+      el('button', { class: 'btn', on: { click: () => wrap.remove() } }, ['Cancel']),
+      el('button', { class: 'btn btn-primary', on: { click: () => { if (DB.setPositionIdea) DB.setPositionIdea(card.id, Object.fromEntries(fields.map(([k]) => [k, inputs[k].value.trim()]))); DB.setNote(card.id, { text: inputs.idea.value.trim(), type: 'idea' }); wrap.remove(); global.OOSApp.toast('Idea card saved.', 'good'); global.OOSApp.go('repertoire', { lineId: line.id, ply: card.ply }); } } }, ['Save idea']),
+    ]));
+    back.addEventListener('click', () => wrap.remove()); wrap.appendChild(back); wrap.appendChild(panel); document.body.appendChild(wrap);
+  }
 
   function lineForMovePrompt() {
     return global.OOSData.line(repState.selectedLineId) || null;
