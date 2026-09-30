@@ -1,0 +1,82 @@
+/* Self-hosted OFL fonts. Only the latin subset of each text face is loaded. */
+@import '@fontsource/libre-caslon-text/latin-400.css';
+@import '@fontsource/libre-caslon-text/latin-400-italic.css';
+@import '@fontsource/libre-caslon-text/latin-700.css';
+@import '@fontsource/source-sans-3/latin-400.css';
+@import '@fontsource/source-sans-3/latin-600.css';
+
+/* Chess figurines only (U+2654-265F), subset from Noto Sans Symbols 2: 6 KB. */
+@font-face {
+  font-family: 'OOS Figurine';
+  src: url('../fonts/noto-sans-symbols-2-chess.woff2') format('woff2');
+  unicode-range: U+2654-265F;
+  font-display: swap;
+}
+
+/* The study table. Board colours never change between themes. */
+:root {
+  --bone: #e8dcc4;
+  --sage: #7a8b6f;
+  --ink: #1b1b1b;
+  --due: #c2410c;
+
+  --serif: 'OOS Figurine', 'Libre Caslon Text', Georgia, serif;
+  --sans: 'OOS Figurine', 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+
+  color-scheme: light;
+  --paper: #f5f0e5;
+  --paper-sunk: #ede5d4;
+  --text: #1b1b1b;
+  --text-2: #4a453b;
+  --text-3: #686150;
+  --rule: #d8cdb6;
+  --rule-strong: #1b1b1b;
+  --focus: #1b1b1b;
+  --due-text: #b03a0a;
+  --on-due: #fff8f0;
+  --good-text: #4d5e43;
+  --mark-last: rgb(27 27 27 / 0.13);
+  --heat-new: transparent;
+  --heat-fresh: #7a8b6f;
+  --heat-soon: #b8913f;
+  --heat-due: #c2410c;
+  --heat-overdue: #c2410c;
+  --piece-white: #fbf8f1;
+  --piece-line: #1b1b1b;
+  --piece-black: #1b1b1b;
+  --board-edge: #1b1b1b;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #1a1713;
+  --paper-sunk: #221e19;
+  --text: #ece3cf;
+  --text-2: #c2b8a3;
+  --text-3: #9d9380;
+  --rule: #3a342b;
+  --rule-strong: #e8dcc4;
+  --focus: #e8dcc4;
+  --due-text: #f08a5d;
+  --on-due: #fff8f0;
+  --good-text: #a9bb9b;
+  --board-edge: #0d0b09;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --paper: #1a1713;
+    --paper-sunk: #221e19;
+    --text: #ece3cf;
+    --text-2: #c2b8a3;
+    --text-3: #9d9380;
+    --rule: #3a342b;
+    --rule-strong: #e8dcc4;
+    --focus: #e8dcc4;
+    --due-text: #f08a5d;
+    --on-due: #fff8f0;
+    --good-text: #a9bb9b;
+    --board-edge: #0d0b09;
+  }
+}

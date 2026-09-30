@@ -105,6 +105,12 @@ export const store = {
     updateData((d) => ({ ...d, cards: { ...d.cards, [card.id]: next }, log: [...d.log.slice(-499), event] }));
     return next;
   },
+  /** Make a card due now (e.g. after leaving the preparation in a game). */
+  requeue(id: string) {
+    const prev = state.data.cards[id];
+    if (!prev?.reps) return;
+    updateData((d) => ({ ...d, cards: { ...d.cards, [id]: { ...prev, due: Date.now() } } }));
+  },
   addGames(games: GameRecord[]): number {
     const known = new Set(state.data.games.map((g) => g.id));
     const fresh = games.filter((g) => !known.has(g.id));

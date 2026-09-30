@@ -1,0 +1,327 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--text);
+  font: 400 16px/1.5 var(--sans);
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+a {
+  color: inherit;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Type */
+.display {
+  font: 400 30px/1.15 var(--serif);
+  letter-spacing: -0.005em;
+}
+.title {
+  font: 400 22px/1.25 var(--serif);
+}
+.label {
+  font: 600 12px/1.3 var(--sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.lede {
+  color: var(--text-2);
+  max-width: 38em;
+}
+.meta {
+  font-size: 14px;
+  color: var(--text-3);
+}
+.serif-italic {
+  font-family: var(--serif);
+  font-style: italic;
+}
+
+/* Buttons: ink outline by default, the due accent only for the one primary action. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  background: transparent;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--paper-sunk);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn-ink {
+  background: var(--rule-strong);
+  color: var(--paper);
+}
+.btn-ink:hover {
+  background: var(--rule-strong);
+  opacity: 0.88;
+}
+.btn-due {
+  background: var(--due);
+  border-color: var(--due);
+  color: var(--on-due);
+}
+.btn-due:hover {
+  background: var(--due);
+  opacity: 0.9;
+}
+.link {
+  border: 0;
+  padding: 2px 0;
+  background: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 4px;
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+.kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 4px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  font: 600 11px/1.5 var(--sans);
+  text-align: center;
+  color: var(--text-3);
+}
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid var(--text-3);
+  border-radius: 2px;
+  background: var(--paper);
+}
+.input:focus-visible {
+  outline-offset: 0;
+  border-color: var(--focus);
+}
+.input::placeholder {
+  color: var(--text-3);
+}
+
+/* Segmented choice (White / Black, Lichess / Chess.com) */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+}
+.seg button {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.seg button + button {
+  border-left: 1px solid var(--rule-strong);
+}
+.seg button[aria-pressed='true'] {
+  background: var(--rule-strong);
+  color: var(--paper);
+}
+
+/* Moves, set like a chess book */
+.movetext {
+  font: 400 18px/1.8 var(--serif);
+  font-variant-numeric: lining-nums;
+  hyphens: none;
+}
+.movetext .num {
+  font-weight: 700;
+  margin-right: 0.08em;
+}
+.movetext .num-black {
+  font-weight: 400;
+}
+.movetext .mv {
+  display: inline;
+  padding: 0 2px;
+  margin: 0 -2px;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  font: inherit;
+  cursor: default;
+}
+.movetext button.mv {
+  cursor: pointer;
+}
+.movetext button.mv:hover {
+  background: var(--paper-sunk);
+}
+.movetext .mv.is-current {
+  background: var(--rule-strong);
+  color: var(--paper);
+}
+.movetext .mv.is-dev {
+  color: var(--due-text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.movetext .mv.is-out {
+  color: var(--text-3);
+}
+.movetext .mv-trailing {
+  color: var(--text-3);
+}
+.movetext.is-small {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Board */
+.board {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.board.is-interactive {
+  cursor: pointer;
+}
+.sq-l {
+  fill: var(--bone);
+}
+.sq-d {
+  fill: var(--sage);
+}
+.sq-last {
+  fill: var(--mark-last);
+}
+.sq-selected {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 0.06;
+}
+.sq-mark {
+  fill: none;
+  stroke-width: 0.08;
+}
+.sq-good {
+  stroke: #33412b;
+}
+.sq-bad {
+  stroke: var(--due);
+}
+.sq-hint {
+  stroke: var(--ink);
+  stroke-dasharray: 0.12 0.08;
+}
+.board-frame {
+  fill: none;
+  stroke: var(--board-edge);
+  stroke-width: 0.04;
+}
+.pc-w-fill {
+  fill: var(--piece-white);
+}
+.pc-w-line {
+  fill: var(--piece-line);
+}
+.pc-b-fill {
+  fill: var(--piece-black);
+}
+.pc-drag {
+  pointer-events: none;
+}
+.target-dot {
+  fill: rgb(27 27 27 / 0.28);
+}
+.target-ring {
+  fill: none;
+  stroke: rgb(27 27 27 / 0.3);
+  stroke-width: 0.07;
+}
+.arrow {
+  stroke-width: 0.13;
+  stroke-linecap: round;
+  opacity: 0.82;
+}
+.arrow-expected {
+  stroke: #26311f;
+}
+.arrow-played {
+  stroke: var(--due);
+}
+.arrow-engine {
+  stroke: #2d4f7c;
+}
+.arrow-head.arrow-expected {
+  fill: #26311f;
+}
+.arrow-head.arrow-played {
+  fill: var(--due);
+}
+.arrow-head.arrow-engine {
+  fill: #2d4f7c;
+}
+.coords text {
+  font: italic 400 0.24px var(--serif);
+  fill: var(--text-3);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fade 180ms ease-out;
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+  }
+}

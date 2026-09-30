@@ -1,0 +1,10 @@
+{
+  "name": "OpeningOS",
+  "short_name": "OpeningOS",
+  "description": "A local-first chess opening repertoire trainer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f0e5",
+  "theme_color": "#f5f0e5",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
