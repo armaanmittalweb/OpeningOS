@@ -1,13 +1,17 @@
-# Stockfish integration
+# Stockfish builds
 
-OpeningOS supports engine-backed analysis through the backend service.
+These files are copied here from the `stockfish` npm package (Stockfish.js 19
+by Nathan Rugg / Chess.com, GPL-3.0) by `scripts/copy-stockfish.mjs`, which
+runs on `npm install`. They are git-ignored and loaded at runtime as a Web
+Worker. They are never bundled into the app's JavaScript.
 
-Preferred production mode:
+| File | Threads | Used when |
+| --- | --- | --- |
+| `stockfish-19-lite-single.js` + `.wasm` | 1 | Default. Works in any page, including `/embed` (not cross-origin isolated). |
+| `stockfish-19-lite.js` + `.wasm` | many | Only when `crossOriginIsolated` is true (the standalone site sends COOP `same-origin` + COEP `require-corp`), which enables `SharedArrayBuffer`. |
+| `COPYING.txt` | | The GPL-3.0 licence that ships with the engine. |
 
-1. Install Stockfish on the backend host.
-2. Set `STOCKFISH_CMD=/path/to/stockfish`.
-3. Call `POST /analysis/fen` or queue `POST /analysis/jobs`.
+Both are the "lite" builds (about 1.7 MB WASM with an embedded small NNUE
+net). The full 99 MB builds in the package are deliberately not copied.
 
-The static frontend also has `js/stockfish_client.js`, which calls the backend when connected and falls back to a lightweight offline material check when no engine is configured.
-
-A WASM worker can be placed in this folder and wired through `js/stockfish_client.js` if you prefer client-side engine analysis, but server-side analysis is recommended for rate limiting and battery/performance control.
+The selection lives in `src/lib/engine.ts`.
