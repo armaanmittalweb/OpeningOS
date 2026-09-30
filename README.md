@@ -1,142 +1,81 @@
-# OpeningOS Complete SaaS Product Platform
+# OpeningOS
 
-OpeningOS is a chess opening-preparation platform for serious players, coaches, teams, and improving club players. This package contains both:
+A local-first chess opening trainer. You build a repertoire by playing moves, drill it with spaced repetition, and check your real games against it. Everything lives in your browser; there is no account.
 
-1. a deployable local-first PWA frontend, and
-2. a SaaS-ready Fastify/Postgres backend with auth, sync, permissions, coach workspaces, sharing, imports, analysis hooks, billing surfaces, audit logs, and admin routes.
+Live at **https://openingos.amittal.dev**.
 
-The product helps users:
+## What it does
 
-- build graph-native opening repertoires with branches, side variations, transpositions, lifecycle states, and edge-level annotations;
-- practice positions with an FSRS-compatible scheduler, session resume, timing, guessed/hinted-answer handling, and review forecasting;
-- import PGNs and queue Lichess/Chess.com backend import jobs;
-- review games against the full repertoire graph with multiple candidate lines, confidence scoring, deviations, repeated mistakes, and ranked repair recommendations;
-- replay and drill model games;
-- manage coach-student workspaces, assignments, comments, progress, permissions, and invitations;
-- share repertoires with public/private/unlisted links, clone flows, access logs, expiration, and revocation;
-- use optional engine-backed analysis through frontend Stockfish/WASM or backend Stockfish routes;
-- export/restore backups and sync profile/graph data across devices through the backend.
+- **Repertoire.** Play or type moves to build lines for White or Black. Positions are keyed by a normalized FEN, so two move orders that reach the same position share one node, and the app tells you when a line transposes into prep you already have.
+- **Graph.** The whole repertoire drawn as a position graph, transpositions included.
+- **Drill.** Each of your moves is a card. You play it on the board (or type it), grade yourself, and an FSRS scheduler decides when you see it again. Sessions resume where you left off.
+- **Games.** Import your games from Lichess or Chess.com by username (both allow it without signing in), or paste PGN. Each game is replayed against your repertoire: where you left your preparation, where your opponent did, and which games reached your prep by transposition.
+- **Engine.** Stockfish 19 (lite, single-threaded WASM) runs in a Web Worker on your device. It reaches depth 20 from the start position in about two seconds.
+- **Offline.** A service worker caches the app shell and the engine, and the app installs as a PWA.
+- **Backup and sync.** Export or restore a JSON backup at any time. Optional sync between devices uses a six-word phrase and end-to-end encryption; see [Sync](#sync).
 
-## Validation
+## Stack
 
-The package was validated with:
+React 19, TypeScript, Vite, chess.js, IndexedDB (with an in-memory fallback), Stockfish.js 19 and WebCrypto. The sync server is a Cloudflare Worker (Hono) on Neon Postgres, in [`sync/`](sync/).
 
-```bash
-npm run validate:full
+## Development
+
+```sh
+npm install        # also copies the Stockfish build into public/stockfish
+npm run dev        # http://localhost:5174
+npm test           # vitest: domain logic, scheduler, PGN, sync crypto
+npm run build      # typecheck + production build
+npm run shots      # screenshots of every view plus an axe run (needs `npm run preview` running)
 ```
 
-This runs smoke tests, static lint, frontend build, and frontend TypeScript checks.
+To try sync locally, start the dev server in `sync/` and point the app at it:
 
-For browser automation after dependencies are installed:
-
-```bash
-npm install
-npx playwright install --with-deps
-npm run test:e2e
+```sh
+cd sync && npm install && npm run dev:local    # http://localhost:8788, in-memory database
+# in another terminal, from the repo root:
+VITE_SYNC_URL=http://localhost:8788 npm run dev
 ```
 
-For backend compilation and local backend development:
+Without `VITE_SYNC_URL` the app still works fully: the sync section says no server is configured, and backups still work. Copy `.env.example` to `.env.local` to set it permanently.
 
-```bash
-cd server
-npm install
-npm run build
-npm run dev
-```
+## Layout
 
-## Frontend local development
+| Path | What is there |
+| --- | --- |
+| `src/domain/` | Pure logic with no DOM: the position graph, repertoire lines, PGN parsing, game review, the FSRS scheduler. |
+| `src/lib/` | The store, IndexedDB, Lichess and Chess.com imports, the Stockfish wrapper, sync crypto and client. |
+| `src/app/` | The four views (Repertoire, Graph, Drill, Games), game review and the sync dialog. |
+| `src/embed/` | `/embed`, a small build used by the Lab on [amittal.dev](https://www.amittal.dev): a five-card drill and a transposition demo, driven over `postMessage`. |
+| `sync/` | The sync API Worker, its schema and tests. |
+| `public/sw.js` | The service worker. |
 
-```bash
-npm install
-npm run dev
-```
+## Sync
 
-Open:
+A six-word phrase from the BIP-39 English list (66 bits) is generated on the device. From it the app derives:
 
-```text
-http://localhost:4173
-```
+- an **id**: SHA-256 of a domain-separated string. It is the only thing the server can link to you;
+- an **AES-GCM key** via PBKDF2 (200,000 iterations). The snapshot is encrypted before it leaves the device.
 
-Avoid `file://` loading because service workers, PWA installability, and some browser APIs need a web origin.
+The phrase is never stored. The device keeps the id and a non-extractable `CryptoKey` in IndexedDB.
 
-## Static frontend deployment
+The server stores one opaque blob per id, with a version number:
+- Writes send `If-Match` with the version the device last saw.
+- If another device wrote first, the server answers 409 and the app asks which copy to keep.
+- Snapshots are limited to 1 MB, and snapshots nobody has written for a year are deleted.
 
-### GitHub Pages
+The API is documented in [`sync/README.md`](sync/README.md).
 
-1. Create a GitHub repository.
-2. Push this folder.
-3. In GitHub, go to **Settings -> Pages**.
-4. Set Source to **GitHub Actions**.
-5. Push to `main`; the included workflow validates and deploys.
+If you lose the phrase, nobody can recover the synced copy, including the server. Keep a backup.
 
-### Vercel / Netlify
+## Deploy
 
-Use the included `vercel.json` or `netlify.toml`. The static frontend can run without the backend, but SaaS features need `OOS_BACKEND_URL` configured in the app settings or environment injection.
+Everything runs on free tiers.
 
-## Backend deployment
+1. **Frontend (Vercel).** Import the repo; `vercel.json` sets the build, rewrites and security headers. Set `VITE_SYNC_URL=https://sync.openingos.amittal.dev` and add the domain `openingos.amittal.dev`.
+2. **Sync (Cloudflare Workers + Neon).** Follow [`sync/README.md`](sync/README.md).
 
-The backend is in `server/`.
+The CSP in `vercel.json` allows network requests only to Lichess, Chess.com and the sync host. `/embed` may be framed only by `https://www.amittal.dev`; every other page refuses framing.
 
-Required production services:
+## Licence
 
-- Postgres database
-- secure `JWT_SECRET`
-- HTTPS domain for frontend and backend
-- email/SMTP provider
-- OAuth app credentials if OAuth is enabled
-- Stripe or equivalent billing credentials if billing is enabled
-- optional Stockfish binary/WASM path for engine analysis jobs
-
-Read:
-
-- `server/README.md`
-- `BACKEND_PRODUCTION_DEPLOYMENT.md`
-- `SAAS_PRODUCTION_RUNBOOK.md`
-- `FULL_SAAS_IMPLEMENTATION_REPORT.md`
-
-## Database migrations
-
-Core migrations are included in:
-
-```text
-server/migrations/001_init.sql
-server/migrations/002_saas_complete.sql
-```
-
-Run after setting `DATABASE_URL`:
-
-```bash
-npm run db:migrate
-```
-
-or from `server/`:
-
-```bash
-npm run migrate
-```
-
-## Important deployment-time integrations
-
-The codebase implements the product surfaces and backend route structure, but provider-backed features require credentials and hosting configuration:
-
-- OAuth login needs provider client IDs/secrets.
-- Passkeys need a stable HTTPS RP ID/domain.
-- Password reset and notifications need an email provider.
-- Billing/subscription management needs payment-provider keys and webhooks.
-- Server-side engine analysis needs Stockfish or an analysis provider.
-- Lichess/Chess.com backend imports need network access and import-job workers.
-- Real team/coach collaboration needs the backend deployed and the frontend pointed at that backend.
-
-## Product documentation
-
-- `FULL_SAAS_IMPLEMENTATION_REPORT.md` — implementation map by requested feature area.
-- `PRODUCT_COMPLETION_MATRIX.md` — product capability matrix.
-- `DEVICE_QA_MATRIX.md` — real-device QA plan.
-- `SECURITY_PRODUCTION_REVIEW.md` and `SECURITY_COMPLIANCE_PLAN.md` — security/compliance checklist.
-- `UI_QUALITY_CHECKLIST.md` — manual UX and accessibility QA.
-
-## Data safety
-
-The frontend remains local-first for offline use. When the backend is configured, users can sync snapshots, graph bundles, changes, shares, coach workspaces, comments, assignments, and audit events through the server.
-
-For serious players and coaches, enable backend sync and regular backup exports before using the product for tournament-critical preparation.
+Stockfish is GPL-3.0; its licence ships alongside the engine in `public/stockfish/COPYING.txt`.

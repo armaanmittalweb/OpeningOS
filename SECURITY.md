@@ -1,34 +1,31 @@
-# Security Notes
+# Security
 
-OpeningOS stores private opening preparation, so the default product posture is private and local-first.
+Opening preparation can be private (tournament work, opponent prep), so OpeningOS keeps it on the device by default and encrypts it before it goes anywhere else.
 
-## Current protections
+## Protections
 
-- Critical chess logic is bundled locally.
-- Content Security Policy is included in `index.html` and deployment configs.
-- User markdown is rendered without allowing raw HTML.
-- Appwrite cloud sync is opt-in.
-- Passwords are not stored by OpeningOS.
-- Backup/export actions are explicit.
+- **No accounts.** There are no passwords to leak and no user table.
+- **End-to-end encrypted sync.**
+  - A six-word phrase (66 bits) yields an AES-GCM key via PBKDF2-SHA-256 with 200,000 iterations, plus a separate SHA-256 id.
+  - The server stores ciphertext keyed by that id.
+  - The key is kept as a non-extractable `CryptoKey`, and the phrase is never stored.
+- **Sync server.**
+  - It accepts only well-formed ids (64 hex characters) and `{v, iv, ct}` envelopes up to 1 MB, and stores only those three fields.
+  - Writes are conditional on the version (`If-Match`), so one device cannot silently overwrite another.
+  - Each IP is limited to 30 requests a minute, and CORS allows only the app's origins.
+  - New phrases are refused once the database nears the free-tier size cap.
+- **Content Security Policy** (see `vercel.json`):
+  - Scripts come from this origin only, plus `wasm-unsafe-eval` for Stockfish; there are no inline scripts.
+  - Network requests may go only to Lichess, Chess.com and the sync host.
+  - Every page refuses framing except `/embed`, which only `https://www.amittal.dev` may frame.
+- **No HTML injection.** User text (line names, PGN headers) is rendered as text by React, and nothing uses `innerHTML`.
 
-## Sensitive data
+## Limits
 
-Opening prep can include private tournament work, opponent prep, and coach notes. Users should not enable cloud sync unless they trust the configured Appwrite project.
+- The id is derived from the phrase alone, so anyone who has your phrase can read and overwrite your synced copy. Treat the phrase like a password.
+- The PBKDF2 salt is fixed per app, not per user. This is deliberate: the phrase alone must be enough to find and decrypt the data on a new device, and its 66 bits of entropy are what resist guessing.
+- Deleting from the server does not delete copies on your other devices or your backup files.
 
-## Reporting issues
+## Reporting a problem
 
-Until a public repository is created, track security issues privately. Once hosted, add a security contact email and GitHub Security Advisories.
-
-## SaaS hardening before paid launch
-
-Before charging users, add:
-
-- backend auth and authorization
-- server-side validation
-- database row-level permissions
-- audit logs for sharing and coach access
-- rate limits for imports and auth
-- account deletion/export controls
-- abuse prevention
-- dependency scanning
-- regular backups
+Please open a private report through GitHub Security Advisories on this repository rather than a public issue.

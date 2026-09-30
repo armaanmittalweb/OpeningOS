@@ -13,7 +13,7 @@ const rules = vercel.headers.map((r) => ({ re: new RegExp(`^${r.source.replace(/
 
 /**
  * Serve /embed from embed.html and apply the vercel.json headers locally, so
- * dev and preview run under the same COOP/COEP split as production. In dev the
+ * dev and preview send the same security headers as production. In dev the
  * CSP is skipped (Vite's HMR client needs inline scripts and a websocket) and
  * the portfolio's local dev origin may frame /embed.
  */

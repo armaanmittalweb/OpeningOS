@@ -1,28 +1,27 @@
-# Privacy Notes
+# Privacy
 
-OpeningOS is private by default.
+OpeningOS has no accounts, no analytics and no ads.
 
-## Local-first mode
+## On your device
 
-In the default mode, repertoire data, notes, games, review progress, coach records, and settings are stored in the user's browser storage.
+Your repertoire, drill history, imported games and settings are stored in your browser's IndexedDB. They never leave the device unless you use one of the features below. Clearing site data deletes them, so export a backup first.
 
-No data is sent to an OpeningOS server because this static build does not have an OpeningOS server.
+The engine runs entirely on your device.
 
-## Optional external services
+## Network requests you trigger
 
-Users may choose to use:
+**Game imports.** When you import by username, the app fetches that user's public games directly from `lichess.org` or `api.chess.com`. Those sites see the request and your IP address, as with any visit to them.
 
-- Lichess public game imports
-- Chess.com public game imports
-- Lichess opening explorer
-- Appwrite cloud sync
+**Sync (optional, off by default).** Turning sync on sends an encrypted snapshot of your data to `sync.openingos.amittal.dev`. The server receives and keeps only:
+- an id derived from your phrase by SHA-256 (the phrase itself never leaves your device);
+- the snapshot, encrypted with AES-GCM using a key derived from your phrase on your device, which the server cannot decrypt;
+- a version number and the time of the last write.
 
-These features require network requests to those services.
+What happens to that data afterwards:
+- Cloudflare, which runs the server, processes IP addresses for rate limiting (30 requests a minute) and may keep standard request logs.
+- Snapshots nobody has written for 365 days are deleted automatically.
+- **Delete the synced copy**, in the sync dialog, removes yours immediately.
 
 ## Backups
 
-Users can export JSON backups manually. These files may contain private preparation and should be stored carefully.
-
-## Cloud sync
-
-Appwrite sync sends a JSON snapshot of the active OpeningOS profile to the configured Appwrite project. It is off by default.
+Backups are plain JSON files that you download. They are not encrypted and may contain private preparation, so store them accordingly.
