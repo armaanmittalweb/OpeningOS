@@ -1,6 +1,6 @@
 # OpeningOS sync
 
-The server behind OpeningOS's device sync, at `sync.openingos.amittal.dev`. It is one Cloudflare Worker (free plan) on a Neon Postgres database (free plan). It stores one encrypted snapshot per sync phrase and cannot read any of them: the app encrypts on the device and sends only an id derived from the phrase.
+The server behind OpeningOS's device sync, at `openingos-sync.amittal.dev`. It is one Cloudflare Worker (free plan) on a Neon Postgres database (free plan). It stores one encrypted snapshot per sync phrase and cannot read any of them: the app encrypts on the device and sends only an id derived from the phrase.
 
 ## API
 
@@ -61,7 +61,7 @@ npm run dev:local     # Node + in-memory PGlite on http://localhost:8788
 
 3. **Domain.**
    - Once `amittal.dev` is on Cloudflare, uncomment the `routes` entry in `wrangler.jsonc` and deploy again.
-   - In Vercel, set `VITE_SYNC_URL=https://sync.openingos.amittal.dev` on the OpeningOS project and redeploy it.
+   - In Vercel, set `VITE_SYNC_URL=https://openingos-sync.amittal.dev` on the OpeningOS project and redeploy it.
 
 For `npm run dev` (wrangler against real Neon), copy `.dev.vars.example` to `.dev.vars`.
 

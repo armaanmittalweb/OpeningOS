@@ -71,7 +71,7 @@ If you lose the phrase, nobody can recover the synced copy, including the server
 
 Everything runs on free tiers.
 
-1. **Frontend (Vercel).** Import the repo; `vercel.json` sets the build, rewrites and security headers. Set `VITE_SYNC_URL=https://sync.openingos.amittal.dev` and add the domain `openingos.amittal.dev`.
+1. **Frontend (Vercel).** Import the repo; `vercel.json` sets the build, rewrites and security headers. Set `VITE_SYNC_URL=https://openingos-sync.amittal.dev` and add the domain `openingos.amittal.dev`.
 2. **Sync (Cloudflare Workers + Neon).** Follow [`sync/README.md`](sync/README.md).
 
 The CSP in `vercel.json` allows network requests only to Lichess, Chess.com and the sync host. `/embed` may be framed only by `https://www.amittal.dev`; every other page refuses framing.

@@ -14,7 +14,7 @@
   // 30 requests per minute per IP. The Workers rate limiting binding is on the free plan.
   "ratelimits": [{ "name": "LIMITER", "namespace_id": "4101", "simple": { "limit": 30, "period": 60 } }],
   // Daily prune of snapshots not written for 365 days (the `scheduled` export).
-  "triggers": { "crons": ["23 3 * * *"] }
-  // After the domain is on Cloudflare:
-  // "routes": [{ "pattern": "sync.openingos.amittal.dev", "custom_domain": true }]
+  "triggers": { "crons": ["23 3 * * *"] },
+  // Custom domain: Cloudflare creates the DNS record and certificate.
+  "routes": [{ "pattern": "openingos-sync.amittal.dev", "custom_domain": true }]
 }

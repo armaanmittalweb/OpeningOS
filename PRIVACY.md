@@ -12,7 +12,7 @@ The engine runs entirely on your device.
 
 **Game imports.** When you import by username, the app fetches that user's public games directly from `lichess.org` or `api.chess.com`. Those sites see the request and your IP address, as with any visit to them.
 
-**Sync (optional, off by default).** Turning sync on sends an encrypted snapshot of your data to `sync.openingos.amittal.dev`. The server receives and keeps only:
+**Sync (optional, off by default).** Turning sync on sends an encrypted snapshot of your data to `openingos-sync.amittal.dev`. The server receives and keeps only:
 - an id derived from your phrase by SHA-256 (the phrase itself never leaves your device);
 - the snapshot, encrypted with AES-GCM using a key derived from your phrase on your device, which the server cannot decrypt;
 - a version number and the time of the last write.
