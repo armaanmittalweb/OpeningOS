@@ -95,7 +95,7 @@ export function EngineStrip({ fen, onBestMove }: { fen: string; onBestMove?: (uc
           <MoveText moves={sans} startPly={ply} className="is-small engine-pv" />
         </>
       )}
-      {on && build && <span className="engine-build">Stockfish 19 lite · {build.threads > 1 ? `${build.threads} threads` : 'single thread'}</span>}
+      {on && build && <span className="engine-build">Stockfish 19 lite · single thread</span>}
     </div>
   );
 }

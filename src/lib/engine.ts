@@ -1,10 +1,11 @@
 /**
  * Stockfish in a Web Worker, spoken to over UCI.
  *
- * The threaded build needs SharedArrayBuffer, which browsers only expose when
- * the page is cross-origin isolated (COOP same-origin + COEP require-corp).
- * The standalone site sends those headers; /embed deliberately does not, so it
- * always gets the single-threaded build.
+ * Always the single-threaded lite build. The threaded build (stockfish-19-lite.js)
+ * needs a cross-origin isolated page, and even then it usually fails to answer
+ * "uci" in Chromium: it respawns its pthread workers in a loop (80+ in 2.5 s)
+ * until WebAssembly.Memory allocation fails and the page freezes. That happens
+ * faster than any start-up timeout can kill it, so it is not used.
  */
 export interface EngineLine {
   depth: number;
@@ -17,13 +18,7 @@ export interface EngineLine {
 
 export type EngineStatus = 'idle' | 'loading' | 'thinking' | 'error';
 
-export function engineBuild(isolated = typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated): { file: string; threads: number } {
-  if (isolated && typeof SharedArrayBuffer !== 'undefined') {
-    const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2;
-    return { file: 'stockfish-19-lite.js', threads: Math.max(1, Math.min(4, cores - 1)) };
-  }
-  return { file: 'stockfish-19-lite-single.js', threads: 1 };
-}
+export const ENGINE_BUILD = { file: 'stockfish-19-lite-single.js', threads: 1 } as const;
 
 /** Parse one UCI "info" line. Scores are converted to White's point of view. */
 export function parseInfo(line: string, whiteToMove: boolean): EngineLine | null {
@@ -48,14 +43,24 @@ export class Engine {
   private fen = '';
   private searching = false;
   private next: { fen: string; depth: number } | null = null;
-  readonly build = engineBuild();
+  readonly build = ENGINE_BUILD;
 
   constructor(private readonly onLine: (l: EngineLine) => void, private readonly onStatus: (s: EngineStatus, detail?: string) => void) {}
 
   private start(): Promise<void> {
     if (this.ready) return this.ready;
     this.onStatus('loading');
-    this.ready = new Promise<void>((resolve, reject) => {
+    this.ready = this.boot();
+    this.ready.catch((err: unknown) => {
+      this.ready = null;
+      this.onStatus('error', err instanceof Error && err.message ? err.message : 'The engine failed to load.');
+    });
+    return this.ready;
+  }
+
+  /** Starts the worker and resolves on readyok. */
+  private boot(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
       let w: Worker;
       try {
         w = new Worker(`${import.meta.env.BASE_URL}stockfish/${this.build.file}`);
@@ -64,14 +69,18 @@ export class Engine {
         return;
       }
       this.worker = w;
+      const fail = (message: string) => {
+        w.terminate();
+        if (this.worker === w) this.worker = null;
+        reject(new Error(message));
+      };
       w.onerror = (e) => {
-        this.onStatus('error', e.message || 'The engine failed to load.');
-        reject(new Error(e.message));
+        e.preventDefault();
+        fail(e.message || 'The engine failed to load.');
       };
       w.onmessage = (e: MessageEvent<string>) => {
         const line = String(e.data);
         if (line === 'uciok') {
-          if (this.build.threads > 1) w.postMessage(`setoption name Threads value ${this.build.threads}`);
           w.postMessage('isready');
         } else if (line === 'readyok') {
           resolve();
@@ -87,10 +96,6 @@ export class Engine {
       };
       w.postMessage('uci');
     });
-    this.ready.catch(() => {
-      this.ready = null;
-    });
-    return this.ready;
   }
 
   async analyse(fen: string, depth = 20): Promise<void> {
