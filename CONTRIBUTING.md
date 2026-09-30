@@ -23,7 +23,7 @@ The sync server has its own package in `sync/` (see its README).
 - Chess logic lives in `src/domain/`, stays pure (no DOM, no storage) and is covered by tests.
 - New user data must be included in backup, restore and the sync snapshot (`AppData` in `src/lib/store.ts`), and its version must be checked on load.
 - Render user text as text. No `innerHTML` or `dangerouslySetInnerHTML`.
-- Network requests may go only to Lichess, Chess.com and the sync host. Anything new must also be added to the CSP in `vercel.json`, with a reason.
+- Network requests may go only to Lichess, Chess.com, the sync host and the page-view counter (`api.amittal.dev`). Anything new must also be added to the CSP in `vercel.json`, with a reason.
 - No button that does nothing yet. If a feature is not finished, leave it out.
 - Keep the sync server unable to read user data: it stores the envelope and nothing else.
 

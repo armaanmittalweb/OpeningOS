@@ -4,8 +4,10 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/app.css';
 import { App } from './app/App';
+import { countViews } from './lib/beacon';
 import { initStore } from './lib/store';
 
+countViews('openingos');
 const root = createRoot(document.getElementById('root')!);
 
 initStore()

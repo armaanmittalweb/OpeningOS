@@ -16,7 +16,7 @@ Opening preparation can be private (tournament work, opponent prep), so OpeningO
   - New phrases are refused once the database nears the free-tier size cap.
 - **Content Security Policy** (see `vercel.json`):
   - Scripts come from this origin only, plus `wasm-unsafe-eval` for Stockfish; there are no inline scripts.
-  - Network requests may go only to Lichess, Chess.com and the sync host.
+  - Network requests may go only to Lichess, Chess.com, the sync host and the page-view counter at `api.amittal.dev`.
   - Every page refuses framing except `/embed`, which only `https://www.amittal.dev` may frame.
 - **No HTML injection.** User text (line names, PGN headers) is rendered as text by React, and nothing uses `innerHTML`.
 

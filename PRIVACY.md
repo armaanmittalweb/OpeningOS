@@ -1,6 +1,6 @@
 # Privacy
 
-OpeningOS has no accounts, no analytics and no ads.
+OpeningOS has no accounts, no ads and no tracking. Page views are counted anonymously (see below).
 
 ## On your device
 
@@ -21,6 +21,10 @@ What happens to that data afterwards:
 - Cloudflare, which runs the server, processes IP addresses for rate limiting (30 requests a minute) and may keep standard request logs.
 - Snapshots nobody has written for 365 days are deleted automatically.
 - **Delete the synced copy**, in the sync dialog, removes yours immediately.
+
+## Page-view counts
+
+Each page load sends the page path (for example `/drill`) and the referring site to `api.amittal.dev`, which keeps daily counts per path, referring site, country and device type. There are no cookies and no ids: a unique visitor is a hash of the day's salt, your IP address and your browser, and the salt is deleted after two days, so visits cannot be linked across days. Nothing about your repertoire, games or drills is sent. Automated browsers and `localhost` send nothing.
 
 ## Backups
 
