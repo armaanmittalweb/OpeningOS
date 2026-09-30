@@ -1,0 +1,2 @@
+# Copy to .dev.vars for `npm run dev` (wrangler). Use the Neon pooled connection string.
+DATABASE_URL=postgres://user:password@ep-example-pooler.region.aws.neon.tech/openingos?sslmode=require

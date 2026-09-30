@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openingos-sync",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-25",
+  "observability": { "enabled": true },
+  // DATABASE_URL is a secret: wrangler secret put DATABASE_URL  (locally: .dev.vars)
+  "vars": {
+    // Comma-separated origins allowed to call the API from a browser.
+    "ALLOWED_ORIGINS": "https://openingos.amittal.dev,https://www.amittal.dev,http://localhost:5174",
+    // New phrases are refused once the table reaches this size (Neon free: 0.5 GB per project).
+    "MAX_TABLE_BYTES": "400000000"
+  },
+  // 30 requests per minute per IP. The Workers rate limiting binding is on the free plan.
+  "ratelimits": [{ "name": "LIMITER", "namespace_id": "4101", "simple": { "limit": 30, "period": 60 } }],
+  // Daily prune of snapshots not written for 365 days (the `scheduled` export).
+  "triggers": { "crons": ["23 3 * * *"] }
+  // After the domain is on Cloudflare:
+  // "routes": [{ "pattern": "sync.openingos.amittal.dev", "custom_domain": true }]
+}
