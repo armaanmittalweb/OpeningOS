@@ -25,6 +25,8 @@ export interface Bindings {
   ALLOWED_ORIGINS?: string;
   MAX_TABLE_BYTES?: string;
   LIMITER?: Limiter;
+  /** Shared with the Switchboard; unlocks /internal/* (admin stats and prune). Unset = those routes 404. */
+  INTERNAL_KEY?: string;
 }
 
 export const MAX_BODY_BYTES = 1_048_576;
@@ -50,6 +52,15 @@ function envelopeOf(body: unknown): { v: 1; iv: string; ct: string } | null {
   if (!data || data.v !== 1 || typeof data.iv !== 'string' || typeof data.ct !== 'string') return null;
   if (!B64.test(data.iv) || !B64.test(data.ct)) return null;
   return { v: 1, iv: data.iv, ct: data.ct };
+}
+
+/** Compares without an early exit, so response time says nothing about how much of the key matched. */
+export function sameKey(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
 }
 
 async function currentVersion(db: Queryable, id: string): Promise<number> {
@@ -142,6 +153,36 @@ export function createApp(db: (env: Bindings) => Queryable) {
     if (!rows[0]) return fail(c, 404, 'Nothing is synced under this phrase.');
     return c.body(null, 204);
   });
+
+  // Private routes for the Switchboard's admin dashboard, reached through a service binding.
+  app.use('/internal/*', async (c, next) => {
+    const key = c.env.INTERNAL_KEY;
+    if (!key || !sameKey(c.req.header('x-internal-key') ?? '', key)) return c.json({ error: 'Not found.' }, 404);
+    return next();
+  });
+
+  app.get('/internal/stats', async (c) => {
+    const [row] = await db(c.env).query<Record<string, string | number>>(
+      `select count(*)::int as snapshots,
+              coalesce(sum(octet_length(data)), 0)::bigint as data_bytes,
+              pg_total_relation_size('snapshots')::bigint as table_bytes,
+              pg_database_size(current_database())::bigint as db_bytes,
+              count(*) filter (where updated_at > now() - interval '1 day')::int as written_24h,
+              count(*) filter (where updated_at > now() - interval '30 days')::int as active_30d
+         from snapshots`,
+    );
+    return c.json({
+      snapshots: Number(row?.snapshots ?? 0),
+      dataBytes: Number(row?.data_bytes ?? 0),
+      tableBytes: Number(row?.table_bytes ?? 0),
+      maxTableBytes: Number(c.env.MAX_TABLE_BYTES) || DEFAULT_MAX_TABLE_BYTES,
+      dbBytes: Number(row?.db_bytes ?? 0),
+      written24h: Number(row?.written_24h ?? 0),
+      active30d: Number(row?.active_30d ?? 0),
+    });
+  });
+
+  app.post('/internal/prune', async (c) => c.json({ deleted: await prune(db(c.env)) }));
 
   app.notFound((c) => c.json({ error: 'Not found.' }, 404));
   app.onError((err, c) => {

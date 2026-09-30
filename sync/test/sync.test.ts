@@ -186,3 +186,25 @@ describe('with the app’s own sync client', () => {
     expect(await client().get(id)).toBeNull();
   });
 });
+
+describe('internal routes', () => {
+  const KEY = 'internal-test-key';
+  const withKey = { ...ENV, INTERNAL_KEY: KEY };
+  const call = (path: string, init: RequestInit = {}, env: Bindings = withKey) => app.request(path, init, env);
+
+  it('404s without the key, with a wrong key, or when no key is configured', async () => {
+    expect((await call('/internal/stats')).status).toBe(404);
+    expect((await call('/internal/stats', { headers: { 'x-internal-key': 'nope' } })).status).toBe(404);
+    expect((await call('/internal/stats', { headers: { 'x-internal-key': KEY } }, ENV)).status).toBe(404);
+  });
+
+  it('reports counts and sizes, and prunes on request', async () => {
+    await put(0);
+    const stats = (await (await call('/internal/stats', { headers: { 'x-internal-key': KEY } })).json()) as Record<string, number>;
+    expect(stats).toMatchObject({ snapshots: 1, written24h: 1, active30d: 1 });
+    expect(stats.tableBytes).toBeGreaterThan(0);
+    expect(stats.maxTableBytes).toBeGreaterThan(stats.tableBytes);
+    const res = await call('/internal/prune', { method: 'POST', headers: { 'x-internal-key': KEY } });
+    expect(await res.json()).toEqual({ deleted: 0 });
+  });
+});
