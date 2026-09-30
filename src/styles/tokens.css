@@ -10,6 +10,7 @@
   font-family: 'OOS Figurine';
   src: url('../fonts/noto-sans-symbols-2-chess.woff2') format('woff2');
   unicode-range: U+2654-265F;
+  size-adjust: 108%;
   font-display: swap;
 }
 

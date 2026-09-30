@@ -36,7 +36,7 @@ export function App() {
             navigate('repertoire');
           }}
         >
-          Opening<span>OS</span>
+          OpeningOS
         </a>
         <nav className="nav" aria-label="Main">
           {ROUTES.map((r) => (

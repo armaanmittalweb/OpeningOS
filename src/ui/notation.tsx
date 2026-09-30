@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 
-const FIG: Record<string, string> = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘' };
+const FIG: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞' };
 
 /** Replace piece letters with figurines: "Nxe5" → "♘xe5", "e8=Q" → "e8=♕". */
 export function figurine(san: string): string {

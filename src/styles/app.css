@@ -25,11 +25,6 @@
   text-decoration: none;
   letter-spacing: -0.01em;
 }
-.wordmark span {
-  font-size: 0.72em;
-  letter-spacing: 0.08em;
-  margin-left: 1px;
-}
 .nav {
   display: flex;
   gap: 28px;
@@ -95,7 +90,7 @@ main:focus {
   position: sticky;
   top: 24px;
   width: 100%;
-  max-width: min(100%, calc(100vh - 190px));
+  max-width: min(100%, calc(100vh - 250px));
   justify-self: center;
 }
 .table-wide .table-board {
@@ -375,8 +370,8 @@ main:focus {
 }
 .node-sel {
   fill: none;
-  stroke: var(--due);
-  stroke-width: 2;
+  stroke: var(--focus);
+  stroke-width: 2.4;
 }
 .node-note {
   font: italic 400 12.5px var(--serif);

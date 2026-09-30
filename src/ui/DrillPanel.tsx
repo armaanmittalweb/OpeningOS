@@ -36,7 +36,7 @@ export function DrillPanel({ card, lineName, d, onNext, compact = false }: Props
     <div className="drill" aria-live="polite">
       <p className="label">{lineName}</p>
       <h2 className={compact ? 'title' : 'display'}>
-        {d.phase === 'ask' ? `Your move as ${side}.` : d.phase === 'correct' ? 'Correct.' : d.wrong ? 'Not your move here.' : d.played ? 'Recorded.' : 'The answer.'}
+        {d.phase === 'ask' ? `Your move as ${side}.` : d.wrong ? 'Not your move here.' : d.played ? 'Correct.' : 'The answer.'}
       </h2>
       <MoveText
         moves={d.played && !d.wrong ? [...card.path, d.played.san] : card.path}

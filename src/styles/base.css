@@ -151,6 +151,7 @@ a {
 /* Segmented choice (White / Black, Lichess / Chess.com) */
 .seg {
   display: inline-flex;
+  align-self: flex-start;
   border: 1px solid var(--rule-strong);
   border-radius: 2px;
 }
@@ -200,10 +201,6 @@ a {
 .movetext button.mv:hover {
   background: var(--paper-sunk);
 }
-.movetext .mv.is-current {
-  background: var(--rule-strong);
-  color: var(--paper);
-}
 .movetext .mv.is-dev {
   color: var(--due-text);
   text-decoration: underline;
@@ -212,6 +209,12 @@ a {
 }
 .movetext .mv.is-out {
   color: var(--text-3);
+}
+.movetext .mv.is-current,
+.movetext button.mv.is-current:hover {
+  background: var(--rule-strong);
+  color: var(--paper);
+  text-decoration-color: var(--due);
 }
 .movetext .mv-trailing {
   color: var(--text-3);

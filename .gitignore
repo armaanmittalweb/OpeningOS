@@ -16,3 +16,4 @@ test-results/
 # Stockfish binaries are copied from node_modules on install
 public/stockfish/*
 !public/stockfish/README.md
+screenshots/
