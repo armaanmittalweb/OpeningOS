@@ -48,7 +48,10 @@ export default defineConfig({
   preview: { port: 5174, strictPort: true },
   build: {
     target: 'es2022',
-    rollupOptions: { input: { main: 'index.html', embed: 'embed.html' } },
+    rollupOptions: {
+      input: { main: 'index.html', embed: 'embed.html' },
+      output: { manualChunks: (id: string) => (id.includes('node_modules') && !id.includes('@scure') ? 'vendor' : undefined) },
+    },
   },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },
 });

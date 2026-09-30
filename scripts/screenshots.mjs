@@ -44,13 +44,6 @@ async function run(size, scheme) {
   await shot('repertoire');
   if (size === 'desktop' && scheme === 'light') await axe(page, 'repertoire');
 
-  await page.goto(`${BASE}/graph`);
-  await page.waitForSelector('.graph');
-  const merge = page.locator('[data-node][aria-label*="transposition"]').first();
-  await merge.click();
-  await shot('graph');
-  if (size === 'desktop' && scheme === 'light') await axe(page, 'graph');
-
   await page.goto(`${BASE}/drill`);
   await page.getByRole('button', { name: /Start drill/ }).click();
   await page.locator('#drill-input').fill('e4');
@@ -65,6 +58,13 @@ async function run(size, scheme) {
   await shot('drill');
   if (size === 'desktop' && scheme === 'light') await axe(page, 'drill');
 
+  await page.goto(`${BASE}/graph`);
+  await page.waitForSelector('.graph');
+  const merge = page.locator('[data-node][aria-label*="transposition"]').first();
+  await merge.click();
+  await shot('graph');
+  if (size === 'desktop' && scheme === 'light') await axe(page, 'graph');
+
   await page.goto(`${BASE}/games`);
   await page.locator('.game-row').first().click();
   await shot('games');
@@ -76,12 +76,14 @@ async function run(size, scheme) {
   if (size === 'desktop' && scheme === 'light') await axe(page, 'sync');
   await page.keyboard.press('Escape');
 
-  const embed = await page.goto(`${BASE}/embed`);
-  if (embed?.ok()) {
-    await page.waitForSelector('.board');
-    await shot('embed');
-    if (size === 'desktop' && scheme === 'light') await axe(page, 'embed');
-  }
+  await page.goto(`${BASE}/embed`);
+  await page.waitForSelector('.board');
+  await page.locator('.embed .board').click({ position: { x: 10, y: 10 } }).catch(() => {});
+  await shot('embed');
+  if (size === 'desktop' && scheme === 'light') await axe(page, 'embed');
+  await page.getByRole('button', { name: 'Transposition' }).click();
+  await page.waitForTimeout(4600);
+  await shot('embed-transpose');
   await browser.close();
 }
 
