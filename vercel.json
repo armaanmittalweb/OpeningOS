@@ -11,7 +11,7 @@
       "destination": "/embed.html"
     },
     {
-      "source": "/((?!assets/|stockfish/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
